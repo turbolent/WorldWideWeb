@@ -1,29 +1,77 @@
-INSTALLDIR = "$(HOME)/Apps";
-APPICON = worldbook2.tiff;
-GENERATEMAIN = NO;
-DOCICONFILES = (docflash2.tiff);
-FILESTABLE = {
-    M_FILES = (WorldWideWeb_main.m);
-    OTHER_LINKED = ();
-    H_FILES = (HTAccess.h, HTFile.h, HTFTP.h, HTParse.h, HTTCP.h, HTTP.h, HTUtils.h, tcp.h, WWW.h, Anchor.h, FileAccess.h, HTStyle.h, HyperAccess.h, HyperManager.h, HyperText.h, NewsAccess.h, StyleToy.h, TcpAccess.h, TextToy.h, WWWPageLayout.h, HTString.h);
-    CLASSES = (Anchor.m, FileAccess.m, HTStyle.m, HyperAccess.m, HyperManager.m, HyperText.m, NewsAccess.m, StyleToy.m, TcpAccess.m, TextToy.m, WWWPageLayout.m);
-    IMAGES = (docflash.tiff, docflash2.tiff, icon1.tiff, worldbook2.tiff);
-    PSW_FILES = ();
-    C_FILES = (HTAccess.c, HTFile.c, HTFTP.c, HTParse.c, HTString.c, HTTCP.c, HTTP.c);
-    OTHER_SOURCES = ();
-    SUBPROJECTS = ();
-    PSWM_FILES = ();
-    SOUNDS = ();
-    OTHER_LIBS = (Media_s, NeXT_s);
-    INTERFACES = (WorldWideWeb.nib);
-};
-APPCLASS = NSApplication;
-MAINNIB = WorldWideWeb;
-DOCEXTENSIONS = (html);
-PROJECTTYPE = Application;
-PROJECTVERSION = 1.1;
-LOCALIZABLE_FILES = {
-};
-PROJECTNAME = WorldWideWeb;
-SYSTEMEXTENSIONS = ();
-LANGUAGE = English;
+{
+    APPCLASS = NSApplication; 
+    FILESTABLE = {
+        CLASSES = (
+            Anchor.m, 
+            FileAccess.m, 
+            HTStyle.m, 
+            HyperAccess.m, 
+            HyperManager.m, 
+            HyperText.m, 
+            NewsAccess.m, 
+            StyleToy.m, 
+            TcpAccess.m, 
+            TextToy.m, 
+            WWWPageLayout.m
+        ); 
+        C_FILES = (); 
+        H_FILES = (
+            HTAccess.h, 
+            HTFile.h, 
+            HTFTP.h, 
+            HTParse.h, 
+            HTTCP.h, 
+            HTTP.h, 
+            HTUtils.h, 
+            tcp.h, 
+            WWW.h, 
+            Anchor.h, 
+            FileAccess.h, 
+            HTStyle.h, 
+            HyperAccess.h, 
+            HyperManager.h, 
+            HyperText.h, 
+            NewsAccess.h, 
+            StyleToy.h, 
+            TcpAccess.h, 
+            TextToy.h, 
+            WWWPageLayout.h, 
+            HTString.h
+        ); 
+        IMAGES = (docflash.tiff, docflash2.tiff, icon1.tiff, worldbook2.tiff); 
+        INTERFACES = (WorldWideWeb.nib); 
+        M_FILES = (); 
+        OTHER_LIBS = (Media_s, NeXT_s); 
+        OTHER_LINKED = (
+            HTAccess.c, 
+            HTFile.c, 
+            HTFTP.c, 
+            HTParse.c, 
+            HTString.c, 
+            HTTCP.c, 
+            HTTP.c, 
+            WorldWideWeb_main.m
+        ); 
+        OTHER_SOURCES = (); 
+        PSWM_FILES = (); 
+        PSW_FILES = (); 
+        SOUNDS = (); 
+        SUBPROJECTS = (); 
+    }; 
+    GENERATEMAIN = NO; 
+    LANGUAGE = English; 
+    LOCALIZABLE_FILES = {}; 
+    MAKEFILEDIR = "$(NEXT_ROOT)/NextDeveloper/Makefiles/pb_makefiles"; 
+    NEXTSTEP_APPICON = worldbook2.tiff; 
+    NEXTSTEP_DOCUMENTEXTENSIONS = ({Extension = html; Image = docflash2.tiff; }); 
+    NEXTSTEP_INSTALLDIR = "$(HOME)/Apps"; 
+    NEXTSTEP_MAINNIB = WorldWideWeb; 
+    PDO_UNIX_INSTALLDIR = "$(HOME)/Apps"; 
+    PDO_UNIX_MAINNIB = WorldWideWeb; 
+    PROJECTNAME = WorldWideWeb; 
+    PROJECTTYPE = Application; 
+    PROJECTVERSION = 2.6; 
+    SYSTEMEXTENSIONS = (); 
+    WINDOWS_INSTALLDIR = "$(HOME)/Apps"; 
+    WINDOWS_MAINNIB = WorldWideWeb; 
+}
