@@ -185,7 +185,7 @@ PRIVATE int response(cmd)
 
     do {
 	char *p = response_text;
-	for(;;) {  
+	for(; ;) {  
 	    if (((*p++=NEXT_CHAR) == '\n')
 			|| (p == &response_text[LINE_LENGTH])) {
 		*p++=0;			/* Terminate the string */
@@ -467,7 +467,7 @@ PRIVATE int get_listen_socket()
 #ifdef POLL_PORTS
     {
         unsigned short old_port_number = port_number;
-	for(port_number=old_port_number+1;;port_number++){ 
+	for(port_number=old_port_number+1; ;port_number++){ 
 	    int status;
 	    if (port_number > LAST_TCP_PORT)
 		port_number = FIRST_TCP_PORT;
@@ -758,7 +758,7 @@ int main(argc, argv)
 	*/   
 	    {
 		char buffer[INPUT_BUFFER_SIZE];
-		for(;;) {
+		for(; ;) {
 		    int status = NETREAD(data_soc, buffer, INPUT_BUFFER_SIZE);
 		    if (status<=0) {
 			if (status<0) (void) HTInetStatus("read");

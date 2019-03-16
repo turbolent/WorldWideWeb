@@ -18,7 +18,7 @@ HTStyle* HTStyleNew()
     HTStyle * self = malloc(sizeof(*self));
     bzero(self, sizeof(*self));
     self->SGMLTag = 0;
-    self->textGray = NX_BLACK;
+    self->textGray = NSBlack;
     self->textRGBColor = -1;		// Not used
     return self;
 }
@@ -57,7 +57,7 @@ HTStyle * HTStyleRead(HTStyle * style, NXStream * stream)
 {
     char myTag[STYLE_NAME_LENGTH];
     char fontName[STYLE_NAME_LENGTH];
-    NXTextStyle *p;
+    NSTextStyle *p;
     int	tab;
     int gotpara;		/* flag: have we got a paragraph definition? */
 	
@@ -99,7 +99,7 @@ HTStyle * HTStyleRead(HTStyle * style, NXStream * stream)
     if (strcmp(fontName, NONE_STRING)==0)
         style->font = 0;
     else
-        style->font = [Font newFont:fontName size:style->fontSize];
+        style->font = [NSFont fontWithName:[NSString stringWithCString:fontName] size:style->fontSize];
     return 0;
 }
 
@@ -109,11 +109,11 @@ HTStyle * HTStyleRead(HTStyle * style, NXStream * stream)
 HTStyle * HTStyleWrite(HTStyle * style, NXStream * stream)
 {
     int tab;
-    NXTextStyle *p = style->paragraph;
+    NSTextStyle *p = style->paragraph;
     NXPrintf(stream, "%s %i %s %f %i\n",
 	style->SGMLTag,
 	style->SGMLType,
-	style->font ? [style->font name] : NONE_STRING,
+	style->font ? [[style->font name] cString] : NONE_STRING,
 	style->fontSize,
 	p!=0);
 
@@ -142,13 +142,13 @@ HTStyle * HTStyleWrite(HTStyle * style, NXStream * stream)
 HTStyle * HTStyleDump(HTStyle * style)
 {
     int tab;
-    NXTextStyle *p = style->paragraph;
+    NSTextStyle *p = style->paragraph;
     printf("Style %i `%s' SGML:%s, type=%i. Font %s %.1f point.\n",
     	style,
 	style->name,
 	style->SGMLTag,
 	style->SGMLType,
-	[style->font name],
+	[[style->font name] cString],
 	style->fontSize);
     if (p) {
         printf(
@@ -189,7 +189,7 @@ HTStyle * HTStyleNamed(HTStyleSheet * self, const char * name)
     return 0;
 }
 
-HTStyle * HTStyleForParagraph(HTStyleSheet * self, NXTextStyle *para)
+HTStyle * HTStyleForParagraph(HTStyleSheet * self, NSTextStyle *para)
 {
     HTStyle * scan;
     for (scan=self->styles; scan; scan=scan->next)
@@ -208,17 +208,17 @@ HTStyle * HTStyleForParagraph(HTStyleSheet * self, NXTextStyle *para)
 **	A style matching in paragraph style exactly
 **	A style matching in paragraph to a degree
 */
-HTStyle * HTStyleForRun(HTStyleSheet *self, NXRun *run)
+HTStyle * HTStyleForRun(HTStyleSheet *self, NSRun *run)
 {
     HTStyle * scan;
     HTStyle * best = 0;
     int	bestMatch = 0;
-    NXTextStyle * rp = run->paraStyle;
+    NSTextStyle * rp = run->paraStyle;
     for (scan=self->styles; scan; scan=scan->next)
         if (scan->paragraph == run->paraStyle) return scan;	/* Exact */
 
     for (scan=self->styles; scan; scan=scan->next){
-    	NXTextStyle * sp = scan->paragraph;
+    	NSTextStyle * sp = scan->paragraph;
     	if (sp) {
 	    int match = 0;
 	    if (sp->indent1st ==	rp->indent1st)	match = match+1;

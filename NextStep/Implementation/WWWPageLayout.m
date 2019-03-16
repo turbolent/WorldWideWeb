@@ -7,9 +7,9 @@
 **
 */
 #import "WWWPageLayout.h"
-#import <appkit/Application.h>
-#import <appkit/Matrix.h>
-#import <appkit/PrintInfo.h>
+#import <AppKit/NSApplication.h>
+#import <AppKit/NSMatrix.h>
+#import <AppKit/NSPrintInfo.h>
 
 @implementation WWWPageLayout
 /*
@@ -25,7 +25,7 @@
  * This can be used as an example of how to override Application Kit panels.
  */
 
-- pickedUnits:sender
+- (void)pickedUnits:(id)sender
 /*
  * Called when the user selects different units (e.g. cm or inches).
  * Must update the margin fields.
@@ -39,31 +39,37 @@
     [topMargin setFloatValue:new * [topMargin floatValue] / old];
     [bottomMargin setFloatValue:new * [bottomMargin floatValue] / old];
 
-    return [super pickedUnits:sender];
+    [super pickedUnits:sender];
 }
 
-- readPrintInfo
+- (void)readPrintInfo
 /*
  * Sets the margin fields from the Application-wide PrintInfo.
  */
 {
     id pi;
     float conversion, dummy;
-    NXCoord left, right, top, bottom;
+    float left, right, top, bottom;
 
     [super readPrintInfo];
-    pi = [NXApp printInfo];
+#warning PrintingConversion:  The current PrintInfo object now depends on context. '[NSPrintInfo sharedPrintInfo]' used to be '[NSApp printInfo]'. This might want to be [[NSPrintOperation currentOperation] printInfo] or possibly [[PageLayout new] printInfo].
+    pi = [NSPrintInfo sharedPrintInfo];
     [self convertOldFactor:&conversion newFactor:&dummy];
-    [pi getMarginLeft:&left right:&right top:&top bottom:&bottom];
+#warning PrintingConversion: May be able to remove some of the [pi xxxxMargin:] calls
+    *(&left) = [pi leftMargin];
+
+    *(&right) = [pi rightMargin];
+
+    *(&top) = [pi topMargin];
+
+    *(&bottom) = [pi bottomMargin];
     [leftMargin setFloatValue:left * conversion];
     [rightMargin setFloatValue:right * conversion];
     [topMargin setFloatValue:top * conversion];
     [bottomMargin setFloatValue:bottom * conversion];
-
-    return self;
 }
 
-- writePrintInfo
+- (void)writePrintInfo
 /*
  * Sets the margin values in the Application-wide PrintInfo from
  * the margin fields in the panel.
@@ -73,17 +79,22 @@
     float conversion, dummy;
 
     [super writePrintInfo];
-    pi = [NXApp printInfo];
+#warning PrintingConversion:  The current PrintInfo object now depends on context. '[NSPrintInfo sharedPrintInfo]' used to be '[NSApp printInfo]'. This might want to be [[NSPrintOperation currentOperation] printInfo] or possibly [[PageLayout new] printInfo].
+    pi = [NSPrintInfo sharedPrintInfo];
     [self convertOldFactor:&conversion newFactor:&dummy];
     if (conversion) {
-	[pi setMarginLeft:[leftMargin floatValue] / conversion
-		    right:[rightMargin floatValue] / conversion
-		      top:[topMargin floatValue] / conversion
-		   bottom:[bottomMargin floatValue] / conversion];
+#warning PrintingConversion: May be able to remove some of the [pi setXXXXMargin:] calls
+	[pi setLeftMargin:[leftMargin floatValue] / conversion];
+
+	[pi setRightMargin:[rightMargin floatValue] / conversion];
+
+	[pi setTopMargin:[topMargin floatValue] / conversion];
+
+	[pi setBottomMargin:[bottomMargin floatValue] / conversion];
     }
-    if (*[pi paperType])
-    	NXWriteDefault("WorldWideWeb", "PaperType", [pi paperType]);	/* Save it */
-    return self;
+    if(![[pi paperName] isEqualToString:@""])
+#warning DefaultsConversion: [<NSUserDefaults> setObject:...forKey:...] used to be NXWriteDefault("WorldWideWeb", "PaperType", [[pi paperName] cString]). Defaults will be synchronized within 30 seconds after this change.  For immediate synchronization, call '-synchronize'. Also note that the first argument of NXWriteDefault is now ignored; to write into a domain other than the apps default, see the NSUserDefaults API.
+    	[[NSUserDefaults standardUserDefaults] setObject:[pi paperName] forKey:@"PaperType"];
 }
 
 /* NIB outlet setting methods */

@@ -1,189 +1,151 @@
-RexecAccess = {
-    SUPERCLASS = HyperAccess;
+"Anchor" = {
+    ACTIONS = {}; 
+    OUTLETS = {DestAnchor = id; Node = id; OutgoingReference = id; }; 
+    SUPERCLASS = Object; 
 };
-TextToy = {
+"Browser" = {ACTIONS = {}; OUTLETS = {}; SUPERCLASS = NSApplication; };
+"DrawPageLayout" = {
+    ACTIONS = {"pickedUnits:" = id; }; 
+    OUTLETS = {bottomMargin = id; leftMargin = id; rightMargin = id; topMargin = id; }; 
+    SUPERCLASS = NSPageLayout; 
+};
+"FileAccess" = {
     ACTIONS = {
-	followLink:;
-	Do_setBackgroundGray:;
-	markSelected:;
-	linkToNew:;
-	linkToMark:;
-	Do_getSel:;
-	unlink:;
-	Do_getStartLength:;
-	markAll:;
-	dump:;
-    };
+        "linkToFile:" = id; 
+        "linkToNew:" = id; 
+        "makeNew:" = id; 
+        "saveAs:" = id; 
+        "saveAsPlainText:" = id; 
+        "saveAsRichText:" = id; 
+    }; 
+    OUTLETS = {}; 
+    SUPERCLASS = HyperAccess; 
+};
+"FirstResponder" = {ACTIONS = {}; OUTLETS = {}; SUPERCLASS = NSObject; };
+"HyperAccess" = {
+    ACTIONS = {
+        "hyperTextDidBecomeMain:" = id; 
+        "open:" = id; 
+        "openRTF:" = id; 
+        "openSGML:" = id; 
+        "search:" = id; 
+        "searchRTF:" = id; 
+        "searchSGML:" = id; 
+    }; 
     OUTLETS = {
-	SearchWindow;
-    };
-    SUPERCLASS = Object;
+        addressString = id; 
+        contentSearch = id; 
+        keywords = id; 
+        manager = id; 
+        openString = id; 
+        titleString = id; 
+    }; 
+    SUPERCLASS = Object; 
 };
-FirstResponder = {
+"HyperManager" = {
     ACTIONS = {
-    };
-    SUPERCLASS = Object;
+        "back:" = id; 
+        "closeOthers:" = id; 
+        "copyAddress:" = id; 
+        "goHome:" = id; 
+        "goToBlank:" = id; 
+        "help:" = id; 
+        "inspectLink:" = id; 
+        "linkToString:" = id; 
+        "next:" = id; 
+        "previous:" = id; 
+        "print:" = id; 
+        "runPagelayout:" = id; 
+        "save:" = id; 
+        "saveAll:" = id; 
+        "setTitle:" = id; 
+        "traceOff:" = id; 
+        "traceOn:" = id; 
+        "windowDidBecomeKey:" = id; 
+    }; 
+    OUTLETS = {}; 
+    SUPERCLASS = HyperAccess; 
 };
-StyleToy = {
+"HyperText" = {ACTIONS = {"followLink:" = id; }; OUTLETS = {}; SUPERCLASS = NSCStringText; };
+"NSPageLayout" = {
     ACTIONS = {
-	heading5Button:;
-	FindUnstyledButton:;
-	listButton:;
-	heading2Button:;
-	ApplyButton:;
-	NextButton:;
-	PreviousButton:;
-	saveAs:;
-	SetButton:;
-	heading4Button:;
-	heading1Button:;
-	heading3Button:;
-	normalButton:;
-	PickButton:;
-	ApplyToSimilar:;
-	glossaryButton:;
-	addressButton:;
-	exampleButton:;
-	heading6Button:;
-	open:;
-    };
+        "pickedButton:" = id; 
+        "pickedLayout:" = id; 
+        "pickedOrientation:" = id; 
+        "pickedPaperSize:" = id; 
+        "pickedUnits:" = id; 
+    }; 
     OUTLETS = {
-	TabForm;
-	ParameterForm;
-	StylePanel;
-	NameForm;
-    };
-    SUPERCLASS = Object;
+        accessoryView = id; 
+        appIcon = id; 
+        cancel = id; 
+        height = id; 
+        layoutList = id; 
+        ok = id; 
+        orientation = id; 
+        paperSizeList = id; 
+        paperView = id; 
+        scale = id; 
+        unitsList = id; 
+        width = id; 
+    }; 
+    SUPERCLASS = NSPanel; 
 };
-FileAccess = {
+"NewsAccess" = {ACTIONS = {}; OUTLETS = {}; SUPERCLASS = HyperAccess; };
+"RexecAccess" = {ACTIONS = {}; OUTLETS = {}; SUPERCLASS = HyperAccess; };
+"StyleToy" = {
     ACTIONS = {
-	linkToNew:;
-	saveAsPlainText:;
-	saveAs:;
-	makeNew:;
-	saveAsRichText:;
-	linkToFile:;
-    };
-    SUPERCLASS = HyperAccess;
+        "ApplyButton:" = id; 
+        "ApplyToSimilar:" = id; 
+        "FindUnstyledButton:" = id; 
+        "NextButton:" = id; 
+        "PickButton:" = id; 
+        "PreviousButton:" = id; 
+        "SetButton:" = id; 
+        "addressButton:" = id; 
+        "exampleButton:" = id; 
+        "glossaryButton:" = id; 
+        "heading1Button:" = id; 
+        "heading2Button:" = id; 
+        "heading3Button:" = id; 
+        "heading4Button:" = id; 
+        "heading5Button:" = id; 
+        "heading6Button:" = id; 
+        "listButton:" = id; 
+        "normalButton:" = id; 
+        "open:" = id; 
+        "saveAs:" = id; 
+    }; 
+    OUTLETS = {NameForm = id; ParameterForm = id; StylePanel = id; TabForm = id; }; 
+    SUPERCLASS = Object; 
 };
-NewsAccess = {
-    SUPERCLASS = HyperAccess;
-};
-WWWPageLayoutJunk = {
-    SUPERCLASS = Object;
-};
-TcpAccess = {
-    SUPERCLASS = HyperAccess;
-};
-HyperText = {
+"TcpAccess" = {ACTIONS = {}; OUTLETS = {}; SUPERCLASS = HyperAccess; };
+"TextToy" = {
     ACTIONS = {
-	followLink:;
-    };
-    SUPERCLASS = Text;
+        "Do_getSel:" = id; 
+        "Do_getStartLength:" = id; 
+        "Do_setBackgroundGray:" = id; 
+        "dump:" = id; 
+        "followLink:" = id; 
+        "linkToMark:" = id; 
+        "linkToNew:" = id; 
+        "markAll:" = id; 
+        "markSelected:" = id; 
+        "unlink:" = id; 
+    }; 
+    OUTLETS = {SearchWindow = id; }; 
+    SUPERCLASS = Object; 
 };
-WWWPageLayout = {
-    ACTIONS = {
-	pickedUnits:;
-    };
+"WWWPageLayout" = {
+    ACTIONS = {"pickedUnits:" = id; }; 
     OUTLETS = {
-	bottomMargin;
-	leftMargin;
-	sideForm;
-	topMargin;
-	rightMargin;
-	topBotForm;
-    };
-    SUPERCLASS = PageLayout;
+        bottomMargin = id; 
+        leftMargin = id; 
+        rightMargin = id; 
+        sideForm = id; 
+        topBotForm = id; 
+        topMargin = id; 
+    }; 
+    SUPERCLASS = NSPageLayout; 
 };
-Anchor = {
-    OUTLETS = {
-	OutgoingReference;
-	DestAnchor;
-	Node;
-    };
-    SUPERCLASS = Object;
-};
-DrawPageLayout = {
-    ACTIONS = {
-	pickedUnits:;
-    };
-    OUTLETS = {
-	topMargin;
-	leftMargin;
-	bottomMargin;
-	rightMargin;
-    };
-    SUPERCLASS = PageLayout;
-};
-HyperAccess = {
-    ACTIONS = {
-	search:;
-	openRTF:;
-	searchRTF:;
-	openSGML:;
-	searchSGML:;
-	open:;
-	hyperTextDidBecomeMain:;
-    };
-    OUTLETS = {
-	keywords;
-	manager;
-	contentSearch;
-	openString;
-	titleString;
-	addressString;
-    };
-    SUPERCLASS = Object;
-};
-HyperManager = {
-    ACTIONS = {
-	print:;
-	help:;
-	next:;
-	save:;
-	traceOn:;
-	previous:;
-	goToBlank:;
-	linkToString:;
-	copyAddress:;
-	inspectLink:;
-	back:;
-	traceOff:;
-	setTitle:;
-	runPagelayout:;
-	goHome:;
-	closeOthers:;
-	saveAll:;
-	windowDidBecomeKey:;
-    };
-    OUTLETS = {
-    };
-    SUPERCLASS = HyperAccess;
-};
-Browser = {
-    SUPERCLASS = Application;
-};
-PageLayout = {
-    ACTIONS = {
-	pickedPaperSize:;
-	pickedUnits:;
-	pickedButton:;
-	pickedLayout:;
-	pickedOrientation:;
-    };
-    OUTLETS = {
-	ok;
-	unitsList;
-	paperView;
-	paperSizeList;
-	scale;
-	orientation;
-	cancel;
-	height;
-	accessoryView;
-	layoutList;
-	appIcon;
-	width;
-    };
-    SUPERCLASS = Panel;
-};
+"WWWPageLayoutJunk" = {ACTIONS = {}; OUTLETS = {}; SUPERCLASS = Object; };

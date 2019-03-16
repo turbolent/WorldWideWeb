@@ -9,7 +9,7 @@
 
 
 #include <stdio.h>
-#include <appkit/appkit.h>
+#include <AppKit/AppKit.h>
 #import "HyperAccess.h"
 #import "HyperManager.h"
 #import "Anchor.h"
@@ -64,9 +64,9 @@
 
 //	Return the name of this access method
 
-- (const char *)name
+- (NSString *)name
 {
-    return "Generic";
+    return @"Generic";
 }
 
 
@@ -124,9 +124,7 @@
 
 - saveNode:(HyperText *)aText
 {
-    NXRunAlertPanel(NULL,
-"You cannot overwrite this original document. You can use `save a copy in...'",
-	    	NULL,NULL,NULL);
+    NSRunAlertPanel(@"", @"You cannot overwrite this original document. You can use `save a copy in...'", @"", nil, nil);
     printf(
     "HyperAccess: You cannot save a hypertext document in this domain.\n");
     return nil;
@@ -142,22 +140,24 @@
 //	Called whenever the text is changed
 - text:thatText isEmpty:flag
 {
-    if (TRACE) printf("Text %i changed, length=%i\n", thatText, [thatText textLength]);
+    if (TRACE) printf("Text %i changed, length=%i\n", thatText, [[thatText text] length]);
     return self;
 }
 #endif
 
-- textDidChange:textObject
+#warning NotificationConversion: 'textDidBeginEditing:' used to be 'textDidChange:'.  This conversion assumes this method is implemented or sent to a delegate of NSText.  If this method was implemented by a NSMatrix or NSTextField textDelegate, use the text notifications in NSControl.h.
+- (void)textDidBeginEditing:(NSNotification *)notification
 {
+#warning NotificationConversion: if this notification was not posted by NSText (eg. was forwarded by NSMatrix or NSTextField from the field editor to their textDelegate), then the text object is found by [[notification userInfo] objectForKey:@"NSFieldEditor"] rather than [notification object]
+    NSText *theText = [notification object];
     if (TRACE) printf("HM: text Did Change.\n");
-    [[textObject window] setDocEdited:YES];	/* Broken cross in close button */
-    return self;
+    [[theText window] setDocumentEdited:YES];
 }
 
-- (BOOL)textWillChange:textObject
+- (BOOL)textShouldBeginEditing:(NSText *)textObject
 {
     if (TRACE) printf("HM: text Will Change -- OK\n");
-    return NO;			/* Ok - you may change (sic) */
+    return YES;			/* Ok - you may change (sic) */
 }
 
 

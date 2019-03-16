@@ -31,10 +31,12 @@
 - copyAddress:sender;		//	Pick up the URL of the current document
 - linkToString: sender;		//	Make link to open string
 - saveAll:sender;		//	Save back all modified windows
-- setTitle:sender;		//	Set the main window's title
-- print:sender;			//	Print the main window
+- (void)setTitle:(id)sender;		//	Set the main window's title
+#warning PrintingConversion:  printPSCode: has been renamed to print:.  Rename this method?
+- (void)print:(id)sender;			//	Print the main window
 - runPagelayout:sender;		//	Run the page layout panel for the app.
 
-- windowDidBecomeKey:sender;	//	Window delegate method
+#warning NotificationConversion: windowDidBecomeKey:(NSNotification *)notification is an NSWindow notification method (used to be a delegate method); delegates of NSWindow are automatically set to observe this notification; subclasses of NSWindow do not automatically receive this notification
+- (void)windowDidBecomeKey:(NSNotification *)notification;	//	Window delegate method
 
 @end

@@ -4,12 +4,12 @@
 // History:
 //	26 Sep 90	Written TBL
 
-#import <objc/Object.h>
+#import <Foundation/NSObject.h>
 #import <objc/List.h>
 #import "Anchor.h"
 #import "HyperText.h"
 
-@interface HyperAccess:Object
+@interface HyperAccess:NSObject
 
 //	Target variables for interface builder hookups:
 
@@ -46,14 +46,15 @@
 //	Calls form other code:
 
 - manager;
-- (const char *)name;				// Name for this access method
+- (NSString *)name;				// Name for this access method
 - loadAnchor:(Anchor *)a;			// Loads an anchor.
 - loadAnchor:(Anchor *)a Diagnostic:(int)level ;// Loads an anchor.
 
 //	Text delegate methods:
 
-- textDidChange:textObject;
-- (BOOL)textWillChange:textObject;
+#warning NotificationConversion: 'textDidBeginEditing:' used to be 'textDidChange:'.  This conversion assumes this method is implemented or sent to a delegate of NSText.  If this method was implemented by a NSMatrix or NSTextField textDelegate, use the text notifications in NSControl.h.
+- (void)textDidBeginEditing:(NSNotification *)notification;
+- (BOOL)textShouldBeginEditing:(NSText *)textObject;
 
 //	HyperText delegate methods:
 

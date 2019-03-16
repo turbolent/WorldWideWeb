@@ -8,7 +8,7 @@
 #import "HTUtils.h"
 
 #import "HyperText.h"
-#define THIS_TEXT  (HyperText *)[[[NXApp mainWindow] contentView] docView]
+#define THIS_TEXT  (HyperText *)[[[NSApp mainWindow] contentView] documentView]
 
 /*	Field numbers in the parameter form:
 */
@@ -27,8 +27,8 @@ extern char * appDirectory;		/* Pointer to directory for application */
        HTStyleSheet * styleSheet = 0;
 
 static HTStyle * style;			/* Current Style */
-static OpenPanel * open_panel;		/* Keep the open panel alive */
-static SavePanel * save_panel;		/* Keep a Save panel too */
+static NSOpenPanel * open_panel;		/* Keep the open panel alive */
+static NSSavePanel * save_panel;		/* Keep a Save panel too */
 
 //	Create new one:
 
@@ -73,28 +73,26 @@ static SavePanel * save_panel;		/* Keep a Save panel too */
 
 - display_style
 {
-    if(style->name) [NameForm setStringValue:style->name at:0];
-    else [NameForm setStringValue:"" at:0];
+    if(style->name) [[NameForm cellAtIndex:0] setStringValue:[NSString stringWithCString:style->name]];
+    else [[NameForm cellAtIndex:0] setStringValue:@""];
     
-    if(style->SGMLTag) [ParameterForm setStringValue:style->SGMLTag at:SGMLTAG_FIELD];
-    else [ParameterForm setStringValue:"" at:SGMLTAG_FIELD];
+    if(style->SGMLTag) [[ParameterForm cellAtIndex:SGMLTAG_FIELD] setStringValue:[NSString stringWithCString:style->SGMLTag]];
+    else [[ParameterForm cellAtIndex:SGMLTAG_FIELD] setStringValue:@""];
     
-    [ParameterForm setStringValue:[style->font name] at:FONT_NAME_FIELD];
+    [[ParameterForm cellAtIndex:FONT_NAME_FIELD] setStringValue:[style->font name]];
 
-    [ParameterForm setFloatValue:style->fontSize at:FONT_SIZE_FIELD];
+    [[ParameterForm cellAtIndex:FONT_SIZE_FIELD] setFloatValue:style->fontSize];
     
     if(style->paragraph) {
     	char tabstring[255];
 	int i;
-       	[ParameterForm setFloatValue:style->paragraph->indent1st
-       				at:FIRST_INDENT_FIELD];
-        [ParameterForm setFloatValue:style->paragraph->indent2nd 
-				at:SECOND_INDENT_FIELD];
+       	[[ParameterForm cellAtIndex:FIRST_INDENT_FIELD] setFloatValue:style->paragraph->indent1st];
+        [[ParameterForm cellAtIndex:SECOND_INDENT_FIELD] setFloatValue:style->paragraph->indent2nd];
 	tabstring[0]=0;
 	for(i=0; i < style->paragraph->numTabs; i++) {
 	    sprintf(tabstring+strlen(tabstring), "%.0f ", style->paragraph->tabs[i].x);
 	}
-	[TabForm setStringValue:tabstring at:0];
+	[[TabForm cellAtIndex:0] setStringValue:[NSString stringWithCString:tabstring]];
     }     
     return self;
 }
@@ -109,18 +107,18 @@ static SavePanel * save_panel;		/* Keep a Save panel too */
     char * name = 0;
     char * stripped;
     
-    style->fontSize=[ParameterForm floatValueAt:FONT_SIZE_FIELD];
-    StrAllocCopy(name, [NameForm stringValueAt:0]);
+    style->fontSize=[[ParameterForm cellAtIndex:FONT_SIZE_FIELD] floatValue];
+    StrAllocCopy(name, [[[NameForm cellAtIndex:0] stringValue] cString]);
     stripped = HTStrip(name);
     if (*stripped) {
         id font;
-	font = [Font newFont:stripped size:style->fontSize];
+	font = [NSFont fontWithName:[NSString stringWithCString:stripped] size:style->fontSize];
 	if (font) style->font = font;
     }
     free(name);
     name = 0;
     
-    StrAllocCopy(name, [ParameterForm stringValueAt:SGMLTAG_FIELD]);
+    StrAllocCopy(name, [[[ParameterForm cellAtIndex:SGMLTAG_FIELD] stringValue] cString]);
     stripped = HTStrip(name);
     if (*stripped) {
         StrAllocCopy(style->SGMLTag, stripped);
@@ -129,8 +127,8 @@ static SavePanel * save_panel;		/* Keep a Save panel too */
     name = 0;
     
     if (!style->paragraph) style->paragraph = malloc(sizeof(*(style->paragraph)));
-    style->paragraph->indent1st = [ParameterForm floatValueAt: FIRST_INDENT_FIELD];
-    style->paragraph->indent2nd = [ParameterForm floatValueAt: SECOND_INDENT_FIELD];
+    style->paragraph->indent1st = [[ParameterForm cellAtIndex:FIRST_INDENT_FIELD] floatValue];
+    style->paragraph->indent2nd = [[ParameterForm cellAtIndex:SECOND_INDENT_FIELD] floatValue];
 
     return self;
 }
@@ -149,16 +147,18 @@ static SavePanel * save_panel;		/* Keep a Save panel too */
     char *typelist[2] = {"style",(char *)0};	//	Extension must be ".style."
 
     if (!open_panel) {
-    	open_panel = [OpenPanel new];
-        [open_panel allowMultipleFiles:NO];
+#warning FactoryMethods: [OpenPanel openPanel] used to be [OpenPanel new].  Open panels are no longer shared.  'openPanel' returns a new, autoreleased open panel in the default configuration.  To maintain state, retain and reuse one open panel (or manually re-set the state each time.)
+    	open_panel = [NSOpenPanel openPanel];
+        [open_panel setAllowsMultipleSelection:NO];
     }
     
+#error StringConversion: Open panel types are now stored in an NSArray of NSStrings (used to use char**).  Change your variable declaration.
     if (![open_panel runModalForTypes:typelist]) {
     	if (TRACE) printf("No file selected.\n");
 	return nil;
     }
 
-    filename = [open_panel filename];
+    filename = [[open_panel filename] cString];
     s = NXMapFile(filename, NX_READONLY);
     if (!s) {
         if(TRACE) printf("Styles: Can't open file %s\n", filename);
@@ -235,16 +235,17 @@ static SavePanel * save_panel;		/* Keep a Save panel too */
     const char * filename;		//	The name chosen
 
     if (!save_panel) {
-        save_panel = [SavePanel new];	//	Keep between invocations
+#warning FactoryMethods: [SavePanel savePanel] used to be [SavePanel new].  Save panels are no longer shared.  'savePanel' returns a new, autoreleased save panel in the default configuration.  To maintain state, retain and reuse one save panel (or manually re-set the state each time.)
+        save_panel = [NSSavePanel savePanel];	//	Keep between invocations
     }
     
     StrAllocCopy(suggestion,styleSheet->name);
     slash = rindex(suggestion, '/');	//	Point to last slash
     if (slash) {
     	*slash++ = 0;			/* Separate directory and filename */
-	status = [save_panel runModalForDirectory:suggestion file:slash];
+	status = [save_panel runModalForDirectory:@"" file:@""];
     } else {
-	status = [save_panel runModalForDirectory:"." file:suggestion];
+	status = [save_panel runModalForDirectory:@"" file:@""];
     }
     free(suggestion);
     
@@ -253,7 +254,7 @@ static SavePanel * save_panel;		/* Keep a Save panel too */
 	return nil;
     }
     
-    filename = [save_panel filename];
+    filename = [[save_panel filename] cString];
     s = NXMapFile(filename, NX_WRITEONLY);
     if (!s) {
         if(TRACE) printf("Styles: Can't open file %s for write\n", filename);

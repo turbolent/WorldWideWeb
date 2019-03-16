@@ -7,13 +7,13 @@
  */
 
 #import <stdlib.h>
-#import <appkit/Application.h>
+#import <AppKit/NSApplication.h>
 // #import <appkit/defaults.h>			/* TBL */
 #import "HTUtils.h"				/* TBL */
 #import <string.h>				/* TBL */
 #import <libc.h>				/* TBL */
-#import <appkit/PrintInfo.h>			/* TBL */
-#import <defaults/defaults.h>			/* TBL */
+#import <AppKit/NSPrintInfo.h>			/* TBL */
+#import <Foundation/NSUserDefaults.h>			/* TBL */
 
 extern char * appDirectory;	/* Name of the directory containing the application */
 
@@ -22,7 +22,8 @@ extern char * appDirectory;	/* Name of the directory containing the application 
 static int int_default(const char * param)
 {
     int	result = 0;
-    const char * string = NXGetDefaultValue("WorldWideWeb", param);
+#warning DefaultsConversion: This used to be a call to NXGetDefaultValue with the owner "WorldWideWeb".  If the owner was different from your applications name, you may need to modify this code.
+    const char * string = [[[NSUserDefaults standardUserDefaults] objectForKey:[NSString stringWithCString:param]] cString];
     if (string) sscanf(string, "%i", &result);
     return result;
 }
@@ -34,6 +35,7 @@ void main(int argc, char *argv[])
 
     char *p;
     
+#error DefaultsConversion: the NXDefaultsVector type is obsolete. Construct a dictionary of default registrations and use the NSUserDefaults 'registerDefaults:' method
     static NXDefaultsVector myDefaults = {
         { "PaperType", "Letter"},		// Non-USA users will have to override
 	{ "LeftMargin", "72"},			//  (72) Space for ring binding
@@ -49,9 +51,10 @@ void main(int argc, char *argv[])
     if (p = strrchr(appDirectory, '/')) p[1]=0;	/* Chop home directory after slash */
     if (TRACE) printf("WWW: Run from %s\n", appDirectory);
 
-    NXApp = [Application new];
+    NSApp = [NSApplication sharedApplication];
+#error DefaultsConversion: NXRegisterDefaults() is obsolete. Construct a dictionary of default registrations and use the NSUserDefaults 'registerDefaults:' method
     NXRegisterDefaults("WorldWideWeb", myDefaults);
-    [NXApp loadNibSection:"WorldWideWeb.nib" owner:NXApp];
+    [NSBundle loadNibNamed:@"WorldWideWeb.nib" owner:NSApp];
 
 //	The deafult Margins seem to be 72, 72, 108, 108 which is a lot.    
     {
@@ -60,13 +63,22 @@ void main(int argc, char *argv[])
 	int topM = int_default("TopMargin");
 	int bottomM = int_default("BottomMargin");
 	
-        PrintInfo * pi = [NXApp printInfo];
-        [pi setPaperType:NXGetDefaultValue("WorldWideWeb", "PaperType") andAdjust:YES];
-	[pi setVertCentered:NO];
-	[pi setMarginLeft:leftM right:rightM top:topM bottom:bottomM]; // Points.
+#warning PrintingConversion:  The current PrintInfo object now depends on context. '[NSPrintInfo sharedPrintInfo]' used to be '[NSApp printInfo]'. This might want to be [[NSPrintOperation currentOperation] printInfo] or possibly [[PageLayout new] printInfo].
+        NSPrintInfo * pi = [NSPrintInfo sharedPrintInfo];
+#warning DefaultsConversion: This used to be a call to NXGetDefaultValue with the owner "WorldWideWeb".  If the owner was different from your applications name, you may need to modify this code.
+        [pi setPaperName:[[NSUserDefaults standardUserDefaults] objectForKey:@"PaperType"]];
+	[pi setVerticallyCentered:NO];
+#warning PrintingConversion: May be able to remove some of the [pi setXXXXMargin:] calls
+	[pi setLeftMargin:leftM];
+
+	[pi setRightMargin:rightM];
+
+	[pi setTopMargin:topM];
+
+	[pi setBottomMargin:bottomM]; // Points.
     }
     
-    [NXApp run];
-    [NXApp free];
+    [NSApp run];
+    [NSApp release];
     exit(0);
 }

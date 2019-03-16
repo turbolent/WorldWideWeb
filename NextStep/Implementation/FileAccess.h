@@ -5,8 +5,9 @@
 
 @interface FileAccess:HyperAccess
 {
+
 }
-+ initialize;
++ (void)initialize;
 
 - saveAs: sender;
 - saveAsRichText: sender;

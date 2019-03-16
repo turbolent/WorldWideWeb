@@ -40,7 +40,7 @@ PUBLIC int strncasecomp ARGS3(CONST char*,a, CONST char *,b, int,n)
 	CONST char *p =a;
 	CONST char *q =b;
 	
-	for(p=a, q=b;; p++, q++) {
+	for(p=a, q=b; ; p++, q++) {
 	    int diff;
 	    if (p == a+n) return 0;	/*   Match up to n characters */
 	    if (!(*p && *q)) return *p - *q;

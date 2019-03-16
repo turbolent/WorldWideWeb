@@ -1,7 +1,7 @@
 //			HyperText Class
 //
 
-#import <appkit/Text.h>
+#import <AppKit/NSText.h>
 #import <objc/List.h>
 #import "Anchor.h"
 #import "HTStyle.h"
@@ -18,7 +18,7 @@
 
 extern void write_rtf_header(NXStream* rtfStream);
 
-@interface HyperText:Text
+@interface HyperText:NSText
 {
 	id 	server;		//	Responsible for maintaining this node
 //	List *	Anchors;	//	A list of the anchors 
@@ -38,6 +38,7 @@ extern void write_rtf_header(NXStream* rtfStream);
 - readSGML:(NXStream*)sgmlStream diagnostic:(int)diagnostic;
 - writeSGML:(NXStream*)sgmlStream relativeTo:(const char *)aName;
 
+#error TextConversion: readText:(NXStream*)stream is obsolete
 - readText:(NXStream*)stream;	//	Overrides Text's method.
 - server;
 - (BOOL) isIndex;
@@ -81,19 +82,22 @@ extern void write_rtf_header(NXStream* rtfStream);
 - disconnectAnchor: (Anchor*)anchor;	// Remove reference from this node.
 - selectAnchor: (Anchor*)anchor;	// Bring to front and highlight it.
 
-- setTitle:(const char *)title;
+- (void)setTitle:(NSString *)title;
 - dump: sender;			// diagnostic output
 
 //	Override methods of superclasses:
 
-- readText: (NXStream *)stream;		// Also set format variable.
-- readRichText: (NXStream *)stream;	// Also set format variable.
-- mouseDown:(NXEvent*)theEvent;		// Double click become hyperjump
-- keyDown:(NXEvent*)theEvent;		//
-- paste:sender;				//
+#error TextConversion: readText:(NXStream *)stream is obsolete
+- readText:(NXStream *)stream;		// Also set format variable.
+#error TextConversion: readRichText:(NXStream *)stream is obsolete
+- readRichText:(NXStream *)stream;	// Also set format variable.
+- (void)mouseDown:(NSEvent *)theEvent;		// Double click become hyperjump
+- (void)keyDown:(NSEvent *)theEvent;		//
+- (void)paste:(id)sender;				//
 
 //	Window delegate methods:
 
-- windowDidBecomeMain:sender;
+#warning NotificationConversion: windowDidBecomeMain:(NSNotification *)notification is an NSWindow notification method (used to be a delegate method); delegates of NSWindow are automatically set to observe this notification; subclasses of NSWindow do not automatically receive this notification
+- (void)windowDidBecomeMain:(NSNotification *)notification;
 
 @end

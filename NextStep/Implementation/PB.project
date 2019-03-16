@@ -17,7 +17,7 @@ FILESTABLE = {
     OTHER_LIBS = (Media_s, NeXT_s);
     INTERFACES = (WorldWideWeb.nib);
 };
-APPCLASS = Application;
+APPCLASS = NSApplication;
 MAINNIB = WorldWideWeb;
 DOCEXTENSIONS = (html);
 PROJECTTYPE = Application;

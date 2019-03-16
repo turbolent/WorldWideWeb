@@ -5,6 +5,7 @@
 
 @interface NewsAccess:HyperAccess
 {
+
 }
 
 

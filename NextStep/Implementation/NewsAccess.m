@@ -13,7 +13,7 @@
 #define CHUNK_SIZE	20	/* Optimum number of articles for quick display */
 
 #import "NewsAccess.h"
-#import <defaults/defaults.h>
+#import <Foundation/NSUserDefaults.h>
 #import "Anchor.h"
 #import "HTParse.h"
 #import "HTStyle.h"
@@ -105,7 +105,7 @@ PRIVATE char next_char(void)
 //	3.	News
 //	4.	Defualt to cernvax.cern.ch	(!!!)
 
-+ initialize
++ (void)initialize
 {
     const struct hostent  *phost;	    		/* Pointer to host - See netdb.h */
     struct sockaddr_in* sin = &soc_address;
@@ -117,8 +117,10 @@ PRIVATE char next_char(void)
 
 /*   Get name of Host
 */
-    if ((NewsHost = NXGetDefaultValue("WorldWideWeb","NewsHost"))==0)
-        if ((NewsHost = NXGetDefaultValue("News","NewsHost")) == 0)
+#warning DefaultsConversion: This used to be a call to NXGetDefaultValue with the owner "WorldWideWeb".  If the owner was different from your applications name, you may need to modify this code.
+    if ((NewsHost = [[[NSUserDefaults standardUserDefaults] objectForKey:@"NewsHost"] cString])==0)
+#warning DefaultsConversion: This used to be a call to NXGetDefaultValue with the owner "News".  If the owner was different from your applications name, you may need to modify this code.
+        if ((NewsHost = [[[NSUserDefaults standardUserDefaults] objectForKey:@"NewsHost"] cString]) == 0)
 	    NewsHost = "cernvax.cern.ch";
 
     if (*NewsHost>='0' && *NewsHost<='9') {   /* Numeric node address: */
@@ -127,9 +129,7 @@ PRIVATE char next_char(void)
     } else {		    /* Alphanumeric node name: */
 	phost=gethostbyname((char*)NewsHost);	/* See netdb.h */
 	if (!phost) {
-	    NXRunAlertPanel(NULL, "Can't find internet node name `%s'.",
-	    	NULL,NULL,NULL,
-		NewsHost);
+	    NSRunAlertPanel(@"", @"Can't find internet node name `%s'.", @"", nil, nil, NewsHost);
 	    CTRACE(tfp,
 	      "NewsAccess: Can't find internet node name `%s'.\n",NewsHost);
 	    return nil;  /* Fail */
@@ -147,16 +147,16 @@ PRIVATE char next_char(void)
 
     s=-1;		/* Disconnected */
     
-    return self;
+    return;
 }
 
 
 //	Return the name of the access
 //	-----------------------------
 
-- (const char *)name
+- (NSString *)name
 {
-    return "news";
+    return @"news";
 }
 
 
@@ -197,7 +197,7 @@ static int response(const char * command)
 	if (TRACE) printf("NNTP command sent: %s", command);
     } /* if command to be sent */
     
-    for(;;) {  
+    for(; ;) {  
 	if (((*p++=NEXT_CHAR) == '\n') || (p == &response_text[LINE_LENGTH])) {
 	    *p++=0;				/* Terminate the string */
 	    if (TRACE) printf("NNTP Response: %s\n", response_text);
@@ -301,7 +301,7 @@ static void write_anchors(char * text)
     char * start = text;
     char * end;
     char c;
-    for (;;) {
+    for (; ;) {
         for(;*start && (WHITE(*start)); start++);  /* Find start */
 	if (!*start) return;						/* (Done) */
         for(end=start; *end && (*end!=' ') && (*end!=','); end++);	/* Find end */
@@ -355,7 +355,7 @@ static void read_article()
 	    } else if (line[0]<' ') {
 		break;		/* End of Header? */
 	    } else if (match(line, "SUBJECT:")) {
-		[HT setTitle:line+8];
+		[HT setTitle:[NSString stringWithCString:line+8]];
 	    } else if (match(line, "DATE:")
 		   || match(line, "FROM:")
 		   || match(line, "ORGANIZATION:")) {
@@ -572,7 +572,7 @@ void read_group(const char * groupName, int first_required, int last_required)
 	"\nThere are about %i articles currently available in %s, IDs as follows:\n\n",
 		count, groupName); 
         [HT appendText:buffer];
-        anchor_start = [HT textLength];
+        anchor_start = [[HT text] length];
         sprintf(buffer, "XHDR Message-ID %i-%i\n", first, last);
 	status = response(buffer);
 	if (status==221) {
@@ -587,6 +587,8 @@ void read_group(const char * groupName, int first_required, int last_required)
 			    done = YES;
 			    break;
 			} else {			/* Line starts with dot */
+			    	/* Ignore strange line */
+						/* Line starts with dot */
 			    	/* Ignore strange line */
 			}
 		    } else {
@@ -697,7 +699,7 @@ void read_group(const char * groupName, int first_required, int last_required)
 		if (art%10 == 0) {
 		    sprintf(buffer, "Reading newsgroup %s,  Article %i (of %i-%i) ...",
 			    groupName, art, first, last);
-		    [HT setTitle:buffer];
+		    [HT setTitle:[NSString stringWithCString:buffer]];
 		}
     
 	    } /* If good response */
@@ -721,7 +723,7 @@ void read_group(const char * groupName, int first_required, int last_required)
 */
     sprintf(buffer, "Newsgroup %s,  Articles %i-%i",
     		groupName, first_required, last_required);
-    [HT setTitle:buffer];
+    [HT setTitle:[NSString stringWithCString:buffer]];
 
 }
 
@@ -802,7 +804,7 @@ void read_group(const char * groupName, int first_required, int last_required)
     for(retries=0;retries<2; retries++){
     
         if (s<0) {
-    	    [[HT window]setTitle:"Connecting to NewsHost ..."];	/* Tell user  */
+    	    [[HT window] setTitle:@"Connecting to NewsHost ..."];	/* Tell user  */
 	    s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	    status = connect(s, (struct sockaddr*)&soc_address, sizeof(soc_address));
 	    if (status<0){
@@ -811,14 +813,11 @@ void read_group(const char * groupName, int first_required, int last_required)
 		s=-1;
 		if (TRACE) printf("NewsAccess: Unable to connect to news host.\n");
 /*		if (retries<=1) continue;   WHY TRY AGAIN ? 	*/
-		NXRunAlertPanel(NULL,
-    		    "Could not access newshost %s.",
-		    NULL,NULL,NULL,
-		    NewsHost);
+		NSRunAlertPanel(@"", @"Could not access newshost %s.", @"", nil, nil, NewsHost);
 		sprintf(message,
 "\nCould not access %s.\n\n (Check default WorldWideWeb NewsHost ?)\n",
 		    NewsHost);
-		[HT setText:message];
+		[HT setString:[NSString stringWithCString:message]];
 		return HT;
 	    } else {
 		if (TRACE) printf("NewsAccess: Connected to news host %s.\n",
@@ -826,24 +825,20 @@ void read_group(const char * groupName, int first_required, int last_required)
 		if ((response(NULL) / 100) !=2) {
 			close(s);
 			s=-1;
-			NXRunAlertPanel("News access",
-			    "Could not retrieve information:\n   %s.",
-			    NULL,NULL,NULL,
-			    response_text);
-    			[[HT window]setTitle: "News host response"];
-			[HT setText:response_text];
+			NSRunAlertPanel(@"News access", @"Could not retrieve information:\n   %s.", @"", nil, nil, response_text);
+    			[[HT window] setTitle:@"News host response"];
+			[HT setString:[NSString stringWithCString:response_text]];
 			return HT;
 		}
 	    }
 	} /* If needed opening */
 	
-        [[HT window]setTitle:arg];		/* Tell user something's happening */
+        [[HT window] setTitle:[NSString stringWithCString:arg]];		/* Tell user something's happening */
 	status = response(command);
 	if (status<0) break;
 	if ((status/ 100) !=2) {
-	    NXRunAlertPanel("News access", response_text,
-	    	NULL,NULL,NULL);
-	    [HT setText:response_text];
+	    NSRunAlertPanel(@"News access", [NSString stringWithCString:response_text], @"", nil, nil);
+	    [HT setString:[NSString stringWithCString:response_text]];
 	    close(s);
 	    s=-1;
 	    // return HT; -- no:the message might be "Timeout-disconnected" left over
@@ -866,7 +861,7 @@ void read_group(const char * groupName, int first_required, int last_required)
 	
     } /* Retry loop */
     
-    [HT setText:"Sorry, could not load requested news.\n"];
+    [HT setString:@"Sorry, could not load requested news.\n"];
     
 /*    NXRunAlertPanel(NULL, "Sorry, could not load `%s'.",
 	    	NULL,NULL,NULL, arg);	No -- message earlier wil have covered it */
@@ -894,7 +889,7 @@ void read_group(const char * groupName, int first_required, int last_required)
     if (![a node]) {
         HT = [self accessName:[a address] anchor:a diagnostic:diagnostic];
     	if (!HT) return nil;
-	[[HT window] setDocEdited:NO];
+	[[HT window] setDocumentEdited:NO];
     }
     return a;
 }

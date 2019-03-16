@@ -5,7 +5,7 @@
 //	current HyperText and then passes the buck to the HyperText class.
 
 #import "TextToy.h"
-#import <appkit/appkit.h>
+#import <AppKit/AppKit.h>
 #import "Anchor.h"
 #import "HyperText.h"
 #import <objc/List.h>
@@ -14,7 +14,7 @@
 
 @implementation TextToy
 
-#define THIS_TEXT  (HyperText *)[[[NXApp mainWindow] contentView] docView]
+#define THIS_TEXT  (HyperText *)[[[NSApp mainWindow] contentView] documentView]
 
     Anchor *	Mark;		/* A marked Anchor */
     
@@ -70,26 +70,27 @@
 //		Window Delegate Functions
 //		-------------------------
 
-- windowDidBecomeKey:window
+#warning NotificationConversion: windowDidBecomeKey:(NSNotification *)notification is an NSWindow notification method (used to be a delegate method); delegates of NSWindow are automatically set to observe this notification; subclasses of NSWindow do not automatically receive this notification
+- (void)windowDidBecomeKey:(NSNotification *)notification
 {
-    return self;
+    NSWindow *theWindow = [notification object];
 }
 
 //	When a document is selected, turn the index search on or off as
 //	appropriate
 
-- windowDidBecomeMain:window
+#warning NotificationConversion: windowDidBecomeMain:(NSNotification *)notification is an NSWindow notification method (used to be a delegate method); delegates of NSWindow are automatically set to observe this notification; subclasses of NSWindow do not automatically receive this notification
+- (void)windowDidBecomeMain:(NSNotification *)notification
 {
-    HyperText * HT =  [[window  contentView] docView];
-    if (!HT) return self;
+    NSWindow *theWindow = [notification object];
+    HyperText * HT =  [[theWindow  contentView] documentView];
+    if (!HT) return;
     
     if ([HT isIndex]) {
 	[SearchWindow makeKeyAndOrderFront:self];
     } else {
 	[SearchWindow orderOut:self];
     }
-    
-    return self;
 }
 
 

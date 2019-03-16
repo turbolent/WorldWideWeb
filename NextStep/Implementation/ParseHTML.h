@@ -269,6 +269,8 @@ void start_style(SGML_style * s)
 void start_highlighting(HTStyle * style)
 {
     /* SET_STYLE(style);  @@@ to be fixed up */
+
+    /* SET_STYLE(style);  @@@ to be fixed up */
 }
 
 /*	End a highlighted area
@@ -276,6 +278,8 @@ void start_highlighting(HTStyle * style)
 */
 void end_highlighting()
 {
+	/* @@@@@@ Need set and unset style functions, traits and nesting */
+
 	/* @@@@@@ Need set and unset style functions, traits and nesting */
 }
 
@@ -335,7 +339,7 @@ static int parse_example(SGML_style * style, char * terminator)
 
     start_style(style);
     UPDATE_STYLE;
-    for (;;){
+    for (; ;){
     	if (END_OF_FILE) return S_text;	/* return if end of stream */
     	*q = NEXT_CHAR;
 	if (upper(*q)==*p) {
@@ -663,7 +667,8 @@ printable:
 			if ((c=='L') || (c=='l')) {		/* OBSOLETE @@ */
 			    if (check("LAINTEXT>")) {
 				if (TRACE) printf("Loading as plain text\n");
-				[self readText:sgmlStream];	/* will read to end */
+#error TextConversion: 'setString:' used to be 'readText' takes an NSString instance (used to take NXStream) ; sgmlStream must be converted to NSString
+				[self setString:sgmlStream];	/* will read to end */
 				SETSTATE(S_done);		/* Inhibit RTF load */
                              }
 			 }
@@ -701,7 +706,7 @@ printable:
 	    case 'e':
 	        if (check("EXTID ")) {
 		    int value = 0;
-		    for(;;){
+		    for(; ;){
 		        c = NEXT_CHAR;
 			if ((c=='N') || (c=='n')) {
 			    if (!check("N = ")) {
@@ -987,7 +992,8 @@ printable:
 	    case 'r':
 	       	if (check("RTF>")) {
 		    if (TRACE) printf("Loading as RTF\n");
-		    [self readRichText:sgmlStream];	/* will read to end */
+#error TextConversion: 'replaceCharactersInRange:withRTF...' (used to be readRichText:) takes an NSData instance as its second argument. sgmlStream must be converted to NSData
+		    [self replaceCharactersInRange:NSMakeRange(0, [[self text] length]) withRTF:sgmlStream];	/* will read to end */
 		    [self adjustWindow];		/* Fix scrollers */
 		    SETSTATE(S_done);		/* Inhibit RTF load */
 		 }
@@ -1002,7 +1008,7 @@ printable:
 		if (check("</TITLE>")) {
 		    title[title_length]=0;		/* Add a terminator */
 		    if (TRACE)printf("\nTitle:\t`%s'\n", title);
-		    [[self window] setTitle:title];
+		    [[self window] setTitle:[NSString stringWithCString:title]];
 		    SETSTATE( S_text);
 		} else SETSTATE( S_junk_tag);	/* @@@ forgets < in titles! */
 	    } else {
@@ -1032,7 +1038,7 @@ printable:
 	free(N);
     }
     
-    [window setDocEdited:NO];
+    [window setDocumentEdited:NO];
     tFlags.changeState = 0; 		/* Please notify delegate if changed */
     return self;
     
@@ -1097,7 +1103,7 @@ SGML_style * findSGML(void *para)
 /*	This function generates the code for one run, given the previous run.
 **
 */
-void change_run(NXRun *last, NXRun *r)
+void change_run(NSRun *last, NSRun *r)
 {
     int chars_left = r->chars;
        
@@ -1237,9 +1243,9 @@ void change_run(NXRun *last, NXRun *r)
 */
 - writeSGML:(NXStream *) stream relativeTo:(const char *)aName
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = theRuns->runs;
     int sor;				/* Character position of start of run */
-    NXRun dummy;
+    NSRun dummy;
     
     dummy.paraStyle = 0;
     dummy.info = 0;
@@ -1257,7 +1263,7 @@ void change_run(NXRun *last, NXRun *r)
     lineLength = 0;			/* Starting in column 1 */
     		
     NXPrintf(stream, "<HEADER>\n");
-    NXPrintf(stream, "<TITLE>%s</TITLE>", [window title]);
+    NXPrintf(stream, "<TITLE>%s</TITLE>", [[window title] cString]);
     
     if (nextAnchorNumber) NXPrintf(stream, "\n<NEXTID N=\"%i\">\n",
 	 nextAnchorNumber);

@@ -9,7 +9,7 @@
 **	It is a linked list of styles.
 */
 
-#import <appkit/appkit.h>
+#import <AppKit/AppKit.h>
 
 #define STYLE_NAME_LENGTH	80
 
@@ -19,7 +19,7 @@ typedef enum _SGML_tagtype {
 	LINE 			/* Style holds until end of line (ugh!)	*/
 } SGML_tagtype;
 	 
-typedef NXCoord HTCoord;
+typedef float HTCoord;
 
 typedef struct _HTStyle {
 	struct _HTStyle	*next;		/* Link for putting into stylesheet */
@@ -29,7 +29,7 @@ typedef struct _HTStyle {
 
 	id		font;		/* The character representation */
 	HTCoord		fontSize;	/* The size of font, not independent */
-	NXTextStyle	*paragraph;	/* Null means not defined */
+	NSTextStyle	*paragraph;	/* Null means not defined */
 #ifdef V1
 	float		textColor;	/* Colour of text */
 #else
@@ -48,8 +48,8 @@ extern HTStyle * HTStyleNew();
 extern HTStyle * HTStyleFree(HTStyle * self);
 extern HTStyle * HTStyleRead(HTStyle * self, NXStream * stream);
 extern HTStyle * HTStyleWrite(HTStyle * self, NXStream * stream);
-extern HTStyle * HTStyleApply(HTStyle * self, Text * text);
-extern HTStyle * HTStylePick(HTStyle * self, Text * text);
+extern HTStyle * HTStyleApply(HTStyle * self, NSText * text);
+extern HTStyle * HTStylePick(HTStyle * self, NSText * text);
 typedef struct _HTStyleSheet {
 	char *		name;
 	HTStyle *	styles;
@@ -62,8 +62,8 @@ extern HTStyleSheet * HTStyleSheetNew();
 extern HTStyleSheet * HTStyleSheetFree(HTStyleSheet * self);
 extern HTStyle * HTStyleNamed(HTStyleSheet * self, const char * name);
 extern HTStyle * HTStyleForParagraph(HTStyleSheet * self,
-	NXTextStyle * paraStyle);
-extern HTStyle * HTStyleForRun(HTStyleSheet *self, NXRun *run);
+	NSTextStyle * paraStyle);
+extern HTStyle * HTStyleForRun(HTStyleSheet *self, NSRun *run);
 extern HTStyleSheet * HTStyleSheetAddStyle(HTStyleSheet * self,
 	HTStyle * style);
 extern HTStyleSheet * HTStyleSheetRemoveStyle(HTStyleSheet * self,

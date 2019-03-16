@@ -19,7 +19,7 @@
 //	For all anchors to have addresses, the node must be made with
 //	newAnchor:Server: . Do not use any other creation methods inherited.
 
-#import <appkit/appkit.h>
+#import <AppKit/AppKit.h>
 #import "HyperText.h"
 #import "HyperAccess.h"
 #import "HTUtils.h"
@@ -45,11 +45,12 @@ static HyperText * slot[SLOTS];			/* Ids of HT objects taking them */
 #define MIN_WIDTH 200.0
 
 static HyperText * HT;		/* Global pointer to self to allow C mixing */
-+initialize
++ (void)initialize
 {
     int i;
     for (i=0; i<SLOTS; i++) slot[i] = 0;
-    return [super initialize];
+    [super initialize];
+    return;
 }
 
 //	Get Application page layout's Page Width
@@ -59,12 +60,23 @@ static HyperText * HT;		/* Global pointer to self to allow C mixing */
 //
 static float page_width()
 {
-    PrintInfo * pi = [NXApp printInfo];			// Page layout details
-    NXCoord topMargin, bottomMargin, leftMargin, rightMargin;
-    const NXRect * paper = [pi paperRect];		//	In points
+#warning PrintingConversion:  The current PrintInfo object now depends on context. '[NSPrintInfo sharedPrintInfo]' used to be '[NSApp printInfo]'. This might want to be [[NSPrintOperation currentOperation] printInfo] or possibly [[PageLayout new] printInfo].
+    NSPrintInfo * pi = [NSPrintInfo sharedPrintInfo];			// Page layout details
+    float topMargin, bottomMargin, leftMargin, rightMargin;
+#error PrintingConversion:  paperRect method changed to paperSize.  Resolve type conflict.
+    const NSRect * paper = *[pi paperSize];		//	In points
     
-    [pi getMarginLeft:&leftMargin right:&rightMargin
-    			top:&topMargin bottom:&bottomMargin];	/* In points */
+#warning PrintingConversion: May be able to remove some of the [pi xxxxMargin:] calls
+    *(&leftMargin) = [pi leftMargin];
+		//	In points
+    
+    *(&rightMargin) = [pi rightMargin];
+		//	In points
+    
+    *(&topMargin) = [pi topMargin];
+		//	In points
+    
+    *(&bottomMargin) = [pi bottomMargin];	/* In points */
     return (paper->size.width - leftMargin - rightMargin);
 
 }
@@ -80,16 +92,16 @@ static float page_width()
 
 + newAnchor:(Anchor *)anAnchor Server:(id)aServer
 {
-    NXRect aFrame = {{0.0, 0.0}, {page_width(), NICE_HEIGHT}};
+    NSRect aFrame = {{0.0, 0.0}, {page_width(), NICE_HEIGHT}};
     
-    self = [super newFrame:&aFrame];
+    self = [super newFrame:aFrame];
     if (TRACE) printf("New node, server is %i\n", aServer);
 
     nextAnchorNumber = 0;
     protection = 0;		// Can do anything
     format = WWW_HTML;		// By default
-    [self setMonoFont: NO];	// By default
-    theRuns->chunk.growby = 16 * sizeof(theRuns->runs[0]); //  efficiency
+    [self setRichText:YES];	// By default
+    [self cStringTextInternalState]->theRuns->chunk.growby = 16 * sizeof([self cStringTextInternalState]->theRuns->runs[0]); //  efficiency
 
     server = (HyperAccess *)aServer;
     [self setDelegate:aServer];			/* For changes */
@@ -104,11 +116,11 @@ static float page_width()
 
 //	Free the hypertext.
 
-- free
+- (void)dealloc
 {
     slot[slotNumber] = 0;	//	Allow slot to be reused
     [nodeAnchor setNode:nil];	// 	Invalidate the node    
-    return [super free];
+    { [super dealloc]; return; };
 }
 
 
@@ -128,19 +140,19 @@ static float page_width()
 {
     int pos;				/* Start of run being scanned */
     int sob=0;				/* Start of text block being scanned */
-    NXRun * r = theRuns->runs;
-    NXTextBlock * block = firstTextBlock;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
+    NSTextBlock * block = [self cStringTextInternalState]->firstTextBlock;
     
-    printf("Hypertext %i, selected(%i,%i)", self, sp0.cp, spN.cp);
-    if (delegate) printf(", has delegate");
+    printf("Hypertext %i, selected(%i,%i)", self, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
+    if ([self cStringTextInternalState]->delegate) printf(", has delegate");
     printf(".\n");
     
     printf("    Frame is at (%f, %f, size is (%f, %f)\n",
-    	frame.origin.x, frame.origin.y,
-    	frame.size.width, frame.size.height);
+    	[self frame].origin.x, [self frame].origin.y,
+    	[self frame].size.width, [self frame].size.height);
     
-    printf("    Text blocks and runs up to character %i:\n", sp0.cp);
-    for (pos = 0; pos<=sp0.cp; pos = pos+((r++)->chars)) {
+    printf("    Text blocks and runs up to character %i:\n", [self cStringTextInternalState]->sp0.cp);
+    for (pos = 0; pos<=[self cStringTextInternalState]->sp0.cp; pos = pos+((r++)->chars)) {
 	while(sob <= pos) {
 	    printf("%5i: Block of %i/%i characters at 0x%x starts `%10.10s'\n",
 	    	sob, block->chars,  malloc_size(block->text), block->text,
@@ -156,9 +168,9 @@ static float page_width()
     }
     r--;	/* Point to run for start of selection */
 
-    printf("\n    Current run:\n\tFont name:\t%s\n", [r->font name]);
+    printf("\n    Current run:\n\tFont name:\t%s\n", [[r->font name] cString]);
     {
-        NXTextStyle *p = (NXTextStyle *)r->paraStyle;
+        NSTextStyle *p = (NSTextStyle *)r->paraStyle;
 	if (!p) {
 	    printf("\tNo paragraph style!\n");
 	} else {
@@ -194,41 +206,41 @@ static float page_width()
 {
 #define MAX_WIDTH  paperWidth
 
-    NXRect scroll_frame;
-    NXRect old_scroll_frame;
-    NXSize size;
+    NSRect scroll_frame;
+    NSRect old_scroll_frame;
+    NSSize size;
     BOOL scroll_X, scroll_Y;			// Do we need scrollers?
     
-    ScrollView* scrollview = [window contentView];// Pick up id of ScrollView
+    NSScrollView* scrollview = [[self window] contentView];// Pick up id of ScrollView
     float paperWidth = page_width();		// Get page layout width
     
     
-    [window disableFlushWindow];	// Prevent flashes
+    [[self window] disableFlushWindow];	// Prevent flashes
     
-    [self setVertResizable:YES];	// Can change size automatically
-    [self setHorizResizable:tFlags.monoFont];
+    [self setVerticallyResizable:YES];	// Can change size automatically
+    [self setHorizontallyResizable:[self cStringTextInternalState]->tFlags.monoFont];
     [self calcLine];			// Wrap text to current text size
     [self sizeToFit];			// Reduce size if possible.
     
-    if (maxY > MAX_HEIGHT) {
+    if ([self cStringTextInternalState]->maxY > MAX_HEIGHT) {
     	scroll_Y = YES;
         size.height = NICE_HEIGHT;
     } else {
         scroll_Y = [self isEditable];
-	size.height = maxY < MIN_HEIGHT ? MIN_HEIGHT : maxY;
+	size.height = [self cStringTextInternalState]->maxY < MIN_HEIGHT ? MIN_HEIGHT : [self cStringTextInternalState]->maxY;
     }
 
-    if (tFlags.monoFont) {
-    	scroll_X = [self isEditable] || (maxX>MAX_WIDTH);
+    if ([self cStringTextInternalState]->tFlags.monoFont) {
+    	scroll_X = [self isEditable] || ([self cStringTextInternalState]->maxX>MAX_WIDTH);
 	[self setNoWrap];
     } else {
     	scroll_X = NO;
         [self setCharWrap:NO];				// Word wrap please 
     }
-    if (maxX > MAX_WIDTH) {
+    if ([self cStringTextInternalState]->maxX > MAX_WIDTH) {
     	size.width = MAX_WIDTH;
     } else {
-        size.width = maxX < MIN_WIDTH ? MIN_WIDTH : maxX;
+        size.width = [self cStringTextInternalState]->maxX < MIN_WIDTH ? MIN_WIDTH : [self cStringTextInternalState]->maxX;
     }
 
 // maxX is the length of the longest line.
@@ -238,25 +250,21 @@ static float page_width()
 //	it to fit.
 
     if (!scroll_X) {
-        [self sizeTo:size.width:maxY];
+        [self setFrameSize:NSMakeSize(size.width, [self cStringTextInternalState]->maxY)];
 	[self calcLine];
 	[self sizeToFit];		// Algorithm found by trial and error.
     }
 
 //	Set up the scroll view and window to match:
 
-    [ScrollView getFrameSize:&scroll_frame.size
-    			forContentSize: &size
-			horizScroller:	scroll_X
-			vertScroller:	scroll_Y
-			borderType: 	NX_LINE];
+    scroll_frame.size = [NSScrollView frameSizeForContentSize:size hasHorizontalScroller:scroll_X hasVerticalScroller:scroll_Y borderType:NSLineBorder];
 			
-    [scrollview setVertScrollerRequired:scroll_Y];
-    [scrollview setHorizScrollerRequired:scroll_X];
+    [scrollview setHasVerticalScroller:scroll_Y];
+    [scrollview setHasHorizontalScroller:scroll_X];
 
 //	Has the frame size changed?
 
-    [scrollview getFrame:&old_scroll_frame];
+    old_scroll_frame = [scrollview frame];
     if ( (old_scroll_frame.size.width != scroll_frame.size.width)
        ||(old_scroll_frame.size.height != scroll_frame.size.height)) {
 
@@ -264,24 +272,21 @@ static float page_width()
 // Now we want to leave the top left corner of the window unmoved:
 
 #ifdef OLD_METHOD	
-        NXRect oldframe;
-	[window getFrame:&oldframe];
-    	[window sizeWindow:scroll_frame.size.width:scroll_frame.size.height];
-	[window moveTopLeftTo: oldframe.origin.x
-			     : oldframe.origin.y + oldframe.size.height];
+        NSRect oldframe;
+	oldframe = [[self window] frame];
+    	[[self window] setContentSize:NSMakeSize(scroll_frame.size.width, scroll_frame.size.height)];
+	[[self window] setFrameTopLeftPoint:NSMakePoint(oldframe.origin.x, oldframe.origin.y + oldframe.size.height)];
 #else
-	NXRect newFrame;
+	NSRect newFrame;
 	scroll_frame.origin.x = 150 + (slotNumber % 10)   * 30
 				    + ((slotNumber/10)%3)* 40;
 	scroll_frame.origin.y = 185 + NICE_HEIGHT - scroll_frame.size.height
 				    - (slotNumber % 10)   * 20
 				    - ((slotNumber/10)%3)*  3;
-	[Window getFrameRect:&newFrame
-		forContentRect:&scroll_frame
-		style:NX_TITLEDSTYLE];	// Doesn't allow space for resize bar
+	newFrame = [NSWindow frameRectForContentRect:scroll_frame styleMask:NSTitledWindowMask];	// Doesn't allow space for resize bar
 	newFrame.origin.y = newFrame.origin.y - 9.0;
 	newFrame.size.height = newFrame.size.height + 9.0; // For resize bar
-	[window placeWindow:&newFrame];	
+	[[self window] setFrame:newFrame display:NO];	
 #endif
     }
     
@@ -289,14 +294,14 @@ static float page_width()
 //	In version 2, the format of the last run is overwritten with the format
 //	of the preceding run!
     {
-      NXRect frm;		/* Try this to get over "text strangeness" */
-      [self getFrame:&frm];      
-      [self renewRuns:NULL text:NULL frame:&frm tag:0];
+      NSRect frm;		/* Try this to get over "text strangeness" */
+      frm = [self frame];      
+      [self renewRuns:NULL text:@"" frame:frm [self cStringTextInternalState]->tag:0];
     }
 #endif
-    [window reenableFlushWindow];
+    [[self window] enableFlushWindow];
     [self calcLine];		/* Prevent messy screen */
-    [window display];		/* Ought to clean it up */
+    [[self window] display];		/* Ought to clean it up */
     return self;
     
 } /* adjustWindow */
@@ -307,19 +312,15 @@ static float page_width()
 
 - setupWindow
 {
-    NXRect scroll_frame;				// Calculated later
-    NXSize min_size = {300.0,200.0};			// Minimum size of text
-    NXSize max_size = {1.0e30,1.0e30};			// Maximum size of text
+    NSRect scroll_frame;				// Calculated later
+    NSSize min_size = {300.0,200.0};			// Minimum size of text
+    NSSize max_size = {1.0e30,1.0e30};			// Maximum size of text
    
-    ScrollView * scrollview;
-    NXSize nice_size = { 0.0, NICE_HEIGHT };		// Guess height
+    NSScrollView * scrollview;
+    NSSize nice_size = { 0.0, NICE_HEIGHT };		// Guess height
         
     nice_size.width = page_width();
-    [ScrollView getFrameSize:&scroll_frame.size
-    			forContentSize: &nice_size
-			horizScroller:NO
-			vertScroller:YES
-			borderType: NX_LINE];
+    scroll_frame.size = [NSScrollView frameSizeForContentSize:nice_size hasHorizontalScroller:NO hasVerticalScroller:YES borderType:NSLineBorder];
 
     {
     	int i;	/* Slot address */
@@ -336,29 +337,27 @@ static float page_width()
  //	Build a window around the text in order to display it.
 
 #define NX_ALLBUTTONS 7  // Fudge -- the followin methos is obsolete in 3.0:    
-    window = [Window newContent:		&scroll_frame
-    				style:		NX_TITLEDSTYLE
-				backing: 	NX_BUFFERED
-				buttonMask:	NX_ALLBUTTONS
-				defer:		NO];		// display now				
-    [window setDelegate:self];			// Get closure warning
-    [window makeKeyAndOrderFront:self];		// Make it visible
-    [window setBackgroundGray: 1.0];		// White seems to be necessary.
+    [self window] = [[NSWindow alloc] initWithContentRect:scroll_frame styleMask:NSTitledWindowMask|NX_ALLBUTTONS backing:NSBackingStoreBuffered defer:NO];		// display now				
+    [[self window] setDelegate:self];			// Get closure warning
+    [[self window] makeKeyAndOrderFront:self];		// Make it visible
+    [[self window] setBackgroundColor:[NSColor whiteColor]];		// White seems to be necessary.
     
-    scrollview = [ScrollView newFrame:&scroll_frame];
-    [scrollview setVertScrollerRequired:YES];
-    [scrollview setHorizScrollerRequired:NO];		// Guess.
-    [[window setContentView:scrollview] free]; 	// Free old view, size new one.
+    scrollview = [NSScrollView newFrame:scroll_frame];
+    [scrollview setHasVerticalScroller:YES];
+    [scrollview setHasHorizontalScroller:NO];		// Guess.
+    [[[self window] setContentView:scrollview] release]; 	// Free old view, size new one.
 
 						
-    [scrollview setDocView:self];
+    [scrollview setDocumentView:self];
+#error ViewConversion: View's 'setOpaque:' is obsolete; you must override 'isOpaque' instead of setting externally (if sent to text, 'setDrawsBackground:' can be used to eliminate background gray; if sent to NSImageRep, it's OK)
     [self setOpaque:YES];			// Suggested in the book
-    [self setVertResizable:YES];		// Changes size automatically
-    [self setHorizResizable:NO];
-    [self setMinSize:&min_size];		// Stop it shrinking to nought
-    [self setMaxSize:&max_size];		// Stop it being chopped when editing
-    [self notifyAncestorWhenFrameChanged: YES]; // Tell scrollview See QA 555
-    [window display];				// Maybe we will see it now
+    [self setVerticallyResizable:YES];		// Changes size automatically
+    [self setHorizontallyResizable:NO];
+    [self setMinSize:min_size];		// Stop it shrinking to nought
+    [self setMaxSize:max_size];		// Stop it being chopped when editing
+#error ViewConversion: 'notifyAncestorWhenFrameChanged:' is obsolete. Register for the NSViewFrameDidChangeNotification instead, e.g.,  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(viewFrameChanged:) name:NSViewFrameDidChangeNotification object:receiverOfNotification]
+    [self notifyAncestorWhenFrameChanged:YES]; // Tell scrollview See QA 555
+    [[self window] display];				// Maybe we will see it now
     return self;
 }
 
@@ -383,8 +382,9 @@ static float page_width()
     char s[20];
 
     sprintf(s,"%c%i",ANCHOR_ID_PREFIX, nextAnchorNumber++);
-    a = [Anchor newParent:nodeAnchor tag:s];
-    [delegate textDidChange:self];
+    a = [Anchor newParent:nodeAnchor [self cStringTextInternalState]->tag:s];
+#warning NotificationConversion: 'textDidBeginEditing:' used to be 'textDidChange:'.  This conversion assumes this method is implemented or sent to a delegate of NSText.  If this method was implemented by a NSMatrix or NSTextField textDelegate, use the text notifications in NSControl.h.
+    [[NSNotificationCenter defaultCenter] postNotificationName:NSTextDidBeginEditingNotification object:self];
     return a;
 }
 
@@ -395,14 +395,14 @@ static float page_width()
 - (Anchor *) anchorSelected
 {
     int sor;
-    NXRun *r, *s, *e;		/* Scan, Start and end runs */
+    NSRun *r, *s, *e;		/* Scan, Start and end runs */
     Anchor * a;
     
     
-    for (sor = 0, s=theRuns->runs;
-    	sor+s->chars<=sp0.cp;
+    for (sor = 0, s=[self cStringTextInternalState]->theRuns->runs;
+    	sor+s->chars<=[self cStringTextInternalState]->sp0.cp;
     	sor = sor+((s++)->chars)) ;
-    for (e=s; sor+e->chars<spN.cp; sor = sor+ (e++)->chars);
+    for (e=s; sor+e->chars<[self cStringTextInternalState]->spN.cp; sor = sor+ (e++)->chars);
     for(r=s; r<=e; r++) {
 	if (a= (Anchor *)r->info) return a;
     }
@@ -425,15 +425,16 @@ static float page_width()
     a = [self anchorSelected];
     if (a) return a;			/* User asked for existing one */
     
-    if ([self isEditable]) [window setDocEdited:YES];
+    if ([self isEditable]) [[self window] setDocumentEdited:YES];
     else return nil;
 
     a = [self anchor];
     style->anchor = a;
     [self applyStyle:style];
     if (TRACE) printf("HyperText: New dest anchor %i from %i to %i.\n",
-    	a, sp0.cp, spN.cp);
-    [delegate textDidChange:self];
+    	a, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
+#warning NotificationConversion: 'textDidBeginEditing:' used to be 'textDidChange:'.  This conversion assumes this method is implemented or sent to a delegate of NSText.  If this method was implemented by a NSMatrix or NSTextField textDelegate, use the text notifications in NSControl.h.
+    [[NSNotificationCenter defaultCenter] postNotificationName:NSTextDidBeginEditingNotification object:self];
     return a;
 }
 
@@ -447,14 +448,14 @@ static float page_width()
     
     if (!anAnchor) return nil;			/* Anchor must exist */
     
-    if ([self isEditable]) [window setDocEdited:YES];
+    if ([self isEditable]) [[self window] setDocumentEdited:YES];
     else return nil;
     
     a = [self anchorSelected];
     if (!a) {
 	a = [self anchor];
     	if (TRACE) printf("HyperText: New source anchor %i from %i to %i.\n",
-	 		a, sp0.cp, spN.cp);
+	 		a, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
     } else {
 	[a select];
     	if (TRACE) printf("HyperText: Existing source anchor %i selected.\n",a);
@@ -478,7 +479,7 @@ static float page_width()
 {
     HTStyle * style = HTStyleNew();
     
-    if ([self isEditable]) [window setDocEdited:YES];
+    if ([self isEditable]) [[self window] setDocumentEdited:YES];
     else return nil;
     
     style->anchor = CLEAR_POINTER;
@@ -503,23 +504,25 @@ static float page_width()
 
 - selectAnchor:(Anchor *)anchor
 {
-    NXRun *s, *e;	/* run for start, run for end */
+    NSRun *s, *e;	/* run for start, run for end */
     int start, sor;
-    NXRun * limit = (NXRun *)((char *)theRuns->runs + theRuns->chunk.used);
-    for (sor=0, s=theRuns->runs; s<limit; sor = sor+(s++)->chars) {
+    NSRun * limit = (NSRun *)((char *)[self cStringTextInternalState]->theRuns->runs + [self cStringTextInternalState]->theRuns->chunk.used);
+    for (sor=0, s=[self cStringTextInternalState]->theRuns->runs; s<limit; sor = sor+(s++)->chars) {
         if (s->info == (void *)anchor){
 		start = sor;
 		
 	        for (e=s; (e < limit)
 				&&((e+1)->info == (void*)anchor);
 			sor = sor+(e++)->chars);
-    		[window makeKeyAndOrderFront: self];
-		[self setSel:start:sor+e->chars];
-		return [self scrollSelToVisible];
+    		[[self window] makeKeyAndOrderFront:self];
+		[self setSelectionStart:start end:sor+e->chars];
+		[self scrollSelToVisible];
+		return self;
 	    }
     }
     if (TRACE) printf("HT: Anchor has no explicitly related text.\n");
-    return [window makeKeyAndOrderFront: self];
+    [[self window] makeKeyAndOrderFront:self];
+    return [self window];
 }
 
 
@@ -536,15 +539,15 @@ static float page_width()
 {
 
     int sor;			/* Start of run */
-    NXRun *r, *s, *e;		/* Scan, Start and end runs */
+    NSRun *r, *s, *e;		/* Scan, Start and end runs */
     Anchor * a;
     int startPos, endPos;
     
-    for (sor = 0, s=theRuns->runs;
-    	sor+s->chars<=sp0.cp;
+    for (sor = 0, s=[self cStringTextInternalState]->theRuns->runs;
+    	sor+s->chars<=[self cStringTextInternalState]->sp0.cp;
     	sor = sor+((s++)->chars)) ;
     startPos = sor;			/* Start of s */
-    for (e=s; sor+e->chars<spN.cp; sor = sor+ (e++)->chars);
+    for (e=s; sor+e->chars<[self cStringTextInternalState]->spN.cp; sor = sor+ (e++)->chars);
     for(r=s, a=nil; r<=e; startPos = startPos + (r++)->chars) {
 	if (a= (Anchor *)r->info) {
 	    break;
@@ -564,7 +567,7 @@ static float page_width()
 		startPos = startPos-(s-1)->chars;
 	for (e=r; (Anchor *)((e+1)->info) == a; e++)
 		endPos   =   endPos+(e+1)->chars;
-	[self setSel:startPos:endPos];
+	[self setSelectionStart:startPos end:endPos];
     }
     return a;
 }
@@ -587,9 +590,10 @@ static float page_width()
     return a;			// ... but we did highlight it.
 }
 
-- setTitle:(const char *)title
+- (void)setTitle:(NSString *)title
 {
-    return [window setTitle:title];
+    [[self window] setTitle:title];
+    return [self window];
 }
 
 
@@ -605,11 +609,11 @@ static float page_width()
 //
 - selectUnstyled: (HTStyleSheet *)sheet
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
     int sor;
-    for (sor=0; sor<textLength; r++) {
+    for (sor=0; sor<[self cStringTextInternalState]->textLength; r++) {
         if (!HTStyleForParagraph(sheet, r->paraStyle)) {
-	    [self setSel:sor:sor+r->chars];	/* Select unstyled run */
+	    [self setSelectionStart:sor end:sor+r->chars];	/* Select unstyled run */
 	    return self;
 	}
         sor = sor+r->chars;
@@ -620,7 +624,7 @@ static float page_width()
 
 //	Copy a style into a run
 //	-----------------------
-static void apply(HTStyle * style, NXRun * r)
+static void apply(HTStyle * style, NSRun * r)
 {
     if (style->font) {
 	r->font = style->font;
@@ -654,7 +658,7 @@ static void apply(HTStyle * style, NXRun * r)
 //	Check whether copying a style into a run will change it
 //	-------------------------------------------------------
 
-static BOOL willChange(HTStyle * style, NXRun *r)
+static BOOL willChange(HTStyle * style, NSRun *r)
 {
     if (r->font != style->font) return YES;
 
@@ -679,15 +683,15 @@ static BOOL willChange(HTStyle * style, NXRun *r)
 //
 - updateStyle:(HTStyle *)style
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
     int sor;
-    for (sor=0; sor<textLength; r++) {
+    for (sor=0; sor<[self cStringTextInternalState]->textLength; r++) {
         if (r->paraStyle == style->paragraph) 
 	    apply(style, r);
         sor = sor+r->chars;
     }
     [self calcLine];
-    [window display];
+    [[self window] display];
     return nil;
 }
 
@@ -698,15 +702,15 @@ static BOOL willChange(HTStyle * style, NXRun *r)
 //
 - disconnectAnchor:(Anchor *)anchor
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
     int sor;
-    for (sor=0; sor<textLength; r++) {
+    for (sor=0; sor<[self cStringTextInternalState]->textLength; r++) {
         if (r->info == (void *)anchor) 
 	    r->info = 0;
-	    r->textGray =  NX_BLACK;
+	    r->textGray =  NSBlack;
         sor = sor+r->chars;
     }
-    [window display];
+    [[self window] display];
     return nil;
 }
 
@@ -718,10 +722,10 @@ static BOOL willChange(HTStyle * style, NXRun *r)
 //
 - (int) startOfParagraph: (int) pos
 {
-    NXTextBlock * block;
+    NSTextBlock * block;
     int sob;
     unsigned char * p;
-    for(block=firstTextBlock, sob=0; sob+block->chars <=pos; block=block->next)
+    for(block=[self cStringTextInternalState]->firstTextBlock, sob=0; sob+block->chars <=pos; block=block->next)
         sob = sob + block->chars;
     for(p=block->text+(pos-sob)-1; p >= block->text; p--)
         if (*p == '\n') return sob + (p - block->text) +1 ;/* Position of newline */
@@ -746,14 +750,14 @@ static BOOL willChange(HTStyle * style, NXRun *r)
 //
 - (int) endOfParagraph: (int) pos
 {
-    NXTextBlock * block;
+    NSTextBlock * block;
     int sob;
     unsigned char * p;
     BOOL found_newline = NO;
     
-    if (pos>=textLength) return textLength;
+    if (pos>=[self cStringTextInternalState]->textLength) return [self cStringTextInternalState]->textLength;
     
-    for(block=firstTextBlock, sob=0; sob+block->chars <=pos; block=block->next)
+    for(block=[self cStringTextInternalState]->firstTextBlock, sob=0; sob+block->chars <=pos; block=block->next)
         sob = sob + block->chars;	// Find text block for pos
     
     p = block->text+(pos-sob);		// Start part way through this one
@@ -774,14 +778,14 @@ static BOOL willChange(HTStyle * style, NXRun *r)
 	if (block) p = block->text;
 	
     }
-    return textLength;
+    return [self cStringTextInternalState]->textLength;
 }
 
 
 //	Do two runs imply the same format?
 //	----------------------------------
 
-BOOL run_match(NXRun* r1, NXRun *r2)
+BOOL run_match(NSRun* r1, NSRun *r2)
 {
     return 	(r1->font == r2->font)
     	&&	(r1->paraStyle == r2->paraStyle)
@@ -799,15 +803,15 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 //	If the runs match in EVERY way, they are combined into one, and
 //	all the other runs are shuffled down.
 //
-- (BOOL) mergeRun: (NXRun *) run
+- (BOOL) mergeRun: (NSRun *) run
 {
-    NXRun * r, *last;
+    NSRun * r, *last;
     if (run_match(run, run+1) ) {
         if (TRACE) printf("HT: Merging run %i\n", run);
         run->chars = run->chars +(run+1)->chars;
-	last = ((NXRun *)((char*)theRuns->runs + theRuns->chunk.used))-1;
+	last = ((NSRun *)((char*)[self cStringTextInternalState]->theRuns->runs + [self cStringTextInternalState]->theRuns->chunk.used))-1;
 	for(r=run+1; r<last; r++) r[0] = r[1];
-        theRuns->chunk.used = theRuns->chunk.used - sizeof(*r);
+        [self cStringTextInternalState]->theRuns->chunk.used = [self cStringTextInternalState]->theRuns->chunk.used - sizeof(*r);
     	return YES;
     }
     return NO;
@@ -834,13 +838,13 @@ BOOL run_match(NXRun* r1, NXRun *r2)
     int new_used;			/* New number of bytes in runs	*/
     BOOL need_run_before, need_run_after;/* Sometimes we don't need them	*/
     int	run_before_start, run_after_end;/* Start of run_before etc 	*/
-    NXRun * s, *e;			/* Start and end run 		*/
-    NXRun *p;				/* Pointer to run being read	*/
-    NXRun *w;				/* Pointer to run being written	*/
-    NXRun *r;				/* Pointer to end of runs	*/
+    NSRun * s, *e;			/* Start and end run 		*/
+    NSRun *p;				/* Pointer to run being read	*/
+    NSRun *w;				/* Pointer to run being written	*/
+    NSRun *r;				/* Pointer to end of runs	*/
     
     if (start == end) {
-        apply(style, &typingRun);		/* Will this work? */
+        apply(style, &[self cStringTextInternalState]->typingRun);		/* Will this work? */
         if (TRACE) printf("Style applied to typing run\n");
 	return nil;				/* Can't operate on nothing */
     }
@@ -848,7 +852,7 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 //	First we determine in which runs the first and last characters to
 //	be changed lie.
    
-    for (pos=0, s=theRuns->runs; pos+s->chars<=start;
+    for (pos=0, s=[self cStringTextInternalState]->theRuns->runs; pos+s->chars<=start;
     			pos = pos+((s++)->chars)) /*loop*/;
 /*	s points to run containing char after selection start */
     run_before_start = pos;
@@ -857,14 +861,14 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 /*	e points to run containing character before selection end */
     run_after_end = pos+e->chars;
 
-    r = (NXRun *) (((char *)(theRuns->runs)) +theRuns->chunk.used);	/* The end*/
+    r = (NSRun *) (((char *)([self cStringTextInternalState]->theRuns->runs)) +[self cStringTextInternalState]->theRuns->chunk.used);	/* The end*/
     
     if (TRACE) {
         printf("Runs: used=%i, elt. size=%i, %i elts, total=%i\n",
-    		theRuns->chunk.used, sizeof(*r), r - theRuns->runs,
-		(r-theRuns->runs)*sizeof(*r) );   
+    		[self cStringTextInternalState]->theRuns->chunk.used, sizeof(*r), r - [self cStringTextInternalState]->theRuns->runs,
+		(r-[self cStringTextInternalState]->theRuns->runs)*sizeof(*r) );   
 	printf("    runs at %i, r=%i. textLength:%i, r ends at:%i\n",
-		theRuns->runs, r, textLength, pos);
+		[self cStringTextInternalState]->theRuns->runs, r, [self cStringTextInternalState]->textLength, pos);
     }
     
        
@@ -881,19 +885,19 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 
     if (TRACE) printf(
     	"Run s=%i, starts at %i; changing (%i,%i); Run e=%i ends at %i\n",
-    	s-theRuns->runs, run_before_start, start, end, e-theRuns->runs, run_after_end); 
+    	s-[self cStringTextInternalState]->theRuns->runs, run_before_start, start, end, e-[self cStringTextInternalState]->theRuns->runs, run_after_end); 
     
     increase = need_run_after + need_run_before;
     if (increase) {
-        new_used = theRuns->chunk.used + increase*sizeof(*r);   
-	if (new_used> theRuns->chunk.allocated) {
-	    NXRun* old = theRuns->runs;
-	    theRuns = (NXRunArray*)NXChunkGrow(&theRuns->chunk, new_used);
-	    if (theRuns->runs !=old) {			/* Move pointers */
+        new_used = [self cStringTextInternalState]->theRuns->chunk.used + increase*sizeof(*r);   
+	if (new_used> [self cStringTextInternalState]->theRuns->chunk.allocated) {
+	    NSRun* old = [self cStringTextInternalState]->theRuns->runs;
+	    [self cStringTextInternalState]->theRuns = (NSRunArray*)NSChunkGrow(&[self cStringTextInternalState]->theRuns->chunk, new_used);
+	    if ([self cStringTextInternalState]->theRuns->runs !=old) {			/* Move pointers */
 		if (TRACE) printf("HT:Apply style: moving runs!\n");
-		e = theRuns->runs + (e-old);
-		r = theRuns->runs + (r-old);
-		s = theRuns->runs + (s-old);
+		e = [self cStringTextInternalState]->theRuns->runs + (e-old);
+		r = [self cStringTextInternalState]->theRuns->runs + (r-old);
+		s = [self cStringTextInternalState]->theRuns->runs + (s-old);
 	    }
 	}
 	for (p=r-1; p>=e; p--) p[increase] = p[0];	/* Move up the runs after */
@@ -918,7 +922,7 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 	    s++;		/* Move on to point to first run to be changed */
 	    if (!need_run_after) e++;			/* First to be changed */
 	}
-    	theRuns->chunk.used = new_used; 
+    	[self cStringTextInternalState]->theRuns->chunk.used = new_used; 
 	
     } /* end if increase */
     
@@ -927,7 +931,7 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 //	need to be merged.
 
     p=s;
-    if (p==theRuns->runs) {
+    if (p==[self cStringTextInternalState]->theRuns->runs) {
         apply(style, p++);		/* Don't merge with run -1! */
     }
     
@@ -958,11 +962,12 @@ BOOL run_match(NXRun* r1, NXRun *r2)
     w++;					/* Point to next to be written */
     if (w<p) {					/* If any were moved, */
 	for(;p<r;) *w++ = *p++;			/* Move the following runs down */	
-    	theRuns->chunk.used = (char*)w - (char*)theRuns->runs; 
+    	[self cStringTextInternalState]->theRuns->chunk.used = (char*)w - (char*)[self cStringTextInternalState]->theRuns->runs; 
     }
     
     [self calcLine];				/* Update line breaks */
-    return [window display];				/* Update window */
+    [[self window] display];				/* Update line breaks */
+    return [self window];				/* Update window */
 }
 
 
@@ -976,20 +981,20 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 {
     int start, end;
     if (TRACE) printf("Applying style %i to (%i,%i)\n",
-    		style, sp0.cp, spN.cp);
+    		style, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
     
-    if (sp0.cp<0) {					/* No selection */
+    if ([self cStringTextInternalState]->sp0.cp<0) {					/* No selection */
     	return [self applyStyle:style from:0 to:0];	/* Apply to typing run */
     }
     
     if (!style) return nil;
 
-    if ([self isEditable]) [window setDocEdited:YES];
+    if ([self isEditable]) [[self window] setDocumentEdited:YES];
     else return nil;
 
     	
-    start = sp0.cp;
-    end = spN.cp;
+    start = [self cStringTextInternalState]->sp0.cp;
+    end = [self cStringTextInternalState]->spN.cp;
     if (style->paragraph) {	/* Extend to an integral number of paras. */
         start = [self startOfParagraph:start];
         end = [self endOfParagraph:end];
@@ -1004,29 +1009,29 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 //
 - applyToSimilar:(HTStyle*)style
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
     int sor;
-    NXRun old_run;
+    NSRun old_run;
     
-    for (sor = 0; sor<=sp0.cp; sor = sor+((r++)->chars)) ;/* Find run after */
+    for (sor = 0; sor<=[self cStringTextInternalState]->sp0.cp; sor = sor+((r++)->chars)) ;/* Find run after */
     old_run = *(r-1);			/* Point to run for start of selection */
 
     if (TRACE) printf(
     	"Applying style %i to unstyled text similar to (%i,%i)\n",
-    	style, sp0.cp, spN.cp);
+    	style, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
 
-    for(r=theRuns->runs;
-    	 (char*)r-(char*)theRuns->runs < theRuns->chunk.used; r++) {
+    for(r=[self cStringTextInternalState]->theRuns->runs;
+    	 (char*)r-(char*)[self cStringTextInternalState]->theRuns->runs < [self cStringTextInternalState]->theRuns->chunk.used; r++) {
         if (r->paraStyle == old_run.paraStyle) {
 	    if(TRACE) printf("    Applying to run %i\n", r);
 	    apply(style,r);
-	    if (r!=theRuns->runs){
+	    if (r!=[self cStringTextInternalState]->theRuns->runs){
 	    	if ([self mergeRun:r-1]) r--;	/* Do again if shuffled down */
 	    }
 	}
     }
     [self calcLine];
-    [window display];
+    [[self window] display];
     return self;
 }
 
@@ -1035,10 +1040,10 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 
 - (HTStyle *) selectionStyle:(HTStyleSheet *) sheet
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
     int sor;
     
-    for (sor = 0; sor<=sp0.cp; sor = sor+((r++)->chars)) ;/* Find run after */
+    for (sor = 0; sor<=[self cStringTextInternalState]->sp0.cp; sor = sor+((r++)->chars)) ;/* Find run after */
     r--;				/* Run for start of selection */
     return HTStyleForRun(sheet, r);	/* for start of selection */
     
@@ -1053,17 +1058,18 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 
 - replaceSel: (const char *)aString style:(HTStyle*)aStyle
 {
-    NXRun * r = theRuns->runs;
+    NSRun * r = [self cStringTextInternalState]->theRuns->runs;
     int sor;
-    NXRunArray	newRuns;
+    NSRunArray	newRuns;
     
-    for (sor = 0; sor<=sp0.cp; sor = sor+((r++)->chars)) ;/* Find run after */
+    for (sor = 0; sor<=[self cStringTextInternalState]->sp0.cp; sor = sor+((r++)->chars)) ;/* Find run after */
     r--;					/* Run for start of selection */
     newRuns.runs[0] = *r;			/* Copy it */
     newRuns.chunk.used = sizeof(*r);		/* 1 run used */
     apply(aStyle, newRuns.runs);		/* change it */
     newRuns.runs->chars = strlen(aString);	/* Match the size to the string */
-    return [self replaceSel:aString length:newRuns.runs->chars runs:&newRuns];
+    [self replaceSel:[NSString stringWithCString:aString] length:newRuns.runs->chars runs:&newRuns];	/* Match the size to the string */
+    return self;
 }
 
 
@@ -1073,20 +1079,22 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 //	This method overrides the method of Text, so as to force a plain text
 //	hypertext to be monofont and fixed width.  Also, the window is updated.
 //
-- readText: (NXStream *)stream
+#error TextConversion: readText:(NXStream *)stream is obsolete
+- readText:(NXStream *)stream
 {
 //    [self setMonoFont:YES];		Seems to leave it in a strange state
-    [self setHorizResizable:YES];
+    [self setHorizontallyResizable:YES];
     [self setNoWrap];
-    [self setFont:[Font newFont:"Ohlfs" size:10.0]];	// @@ Should be XMP
-    [super readText:stream];
+    [self setFont:[NSFont fontWithName:@"Ohlfs" size:10.0]];	// @@ Should be XMP
+#error TextConversion: 'setString:' used to be 'readText' takes an NSString instance (used to take NXStream) ; stream must be converted to NSString
+    [super setString:stream];
     format = WWW_PLAINTEXT;				// Remember
     
 #ifdef NOPE
     {
-      NXRect frm;		/* Try this to get over "text strangeness" */
-      [self getFrame:&frm];      /* on plain text only Aug 91 */
-      [self renewRuns:NULL text:NULL frame:&frm tag:0];
+      NSRect frm;		/* Try this to get over "text strangeness" */
+      frm = [self frame];      /* on plain text only Aug 91 */
+      [self renewRuns:NULL text:@"" frame:frm [self cStringTextInternalState]->tag:0];
     }
 #endif
     [self adjustWindow];
@@ -1100,9 +1108,11 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 //	This method overrides the method of Text, so as to force a plain text
 //	hypertext to be monofont and fixed width.  Also, the window is updated.
 //
-- readRichText: (NXStream *)stream
+#error TextConversion: readRichText:(NXStream *)stream is obsolete
+- readRichText:(NXStream *)stream
 {
-    id status =  [super readRichText:stream];
+#error TextConversion: 'replaceCharactersInRange:withRTF...' (used to be readRichText:) takes an NSData instance as its second argument. stream must be converted to NSData
+    id status =  [super replaceCharactersInRange:NSMakeRange(0, [[super text] length]) withRTF:stream];
     [self adjustWindow];
     format = WWW_RICHTEXT;				// Remember
     return status;
@@ -1113,22 +1123,23 @@ BOOL run_match(NXRun* r1, NXRun *r2)
 
 //	Prevent closure of edited window without save
 //
-- windowWillClose:sender
+- (BOOL)windowShouldClose:(id)sender
 {
     int choice;
-    if (![window isDocEdited]) return self;
-    choice = NXRunAlertPanel("Close", "Save changes to `%s'?",
-    	"Yes", "No", "Don't close", [window title]);
-    if (choice == NX_ALERTALTERNATE) return self;
-    if (choice == NX_ALERTOTHER) return nil;
+    if (![[self window] isDocumentEdited]) return YES;
+    choice = NSRunAlertPanel(@"Close", @"Save changes to `%s'?", @"Yes", @"No", @"Don't close", [[[self window] title] cString]);
+    if (choice == NSAlertAlternateReturn) return YES;
+    if (choice == NSAlertOtherReturn) return NO;
     return [server saveNode:self];
 }
 
 //	Change configuration as window becomes key window
 //
-- windowDidBecomeMain:sender
+#warning NotificationConversion: windowDidBecomeMain:(NSNotification *)notification is an NSWindow notification method (used to be a delegate method); delegates of NSWindow are automatically set to observe this notification; subclasses of NSWindow do not automatically receive this notification
+- (void)windowDidBecomeMain:(NSNotification *)notification
 {
-    return [delegate hyperTextDidBecomeMain:self];
+    NSWindow *theWindow = [notification object];
+    return [[self cStringTextInternalState]->delegate hyperTextDidBecomeMain:self];
 }
 
 /*				FORMAT CONVERSION FROM SGML
@@ -1152,11 +1163,11 @@ static HyperText * HT;				/* Pointer to self for C */
 
 static unsigned char * read_pointer;		/* next character to be read */
 static unsigned char * read_limit;
-static NXTextBlock * read_block;
+static NSTextBlock * read_block;
 
 void start_input()
 {
-    read_block = HT->firstTextBlock;
+    read_block = HT->cStringTextInternalState->firstTextBlock;
     read_pointer = read_block->text;	/* next character to be read */
     read_limit = read_pointer+read_block->chars;
 }
@@ -1165,7 +1176,7 @@ unsigned char next_input_block()
 {
     char c = *read_pointer;
     read_block = read_block->next;
-    if (!read_block) read_block = HT->firstTextBlock;	/* @@@ FUDGE */
+    if (!read_block) read_block = HT->cStringTextInternalState->firstTextBlock;	/* @@@ FUDGE */
     read_pointer = read_block->text;
     read_limit = read_pointer + read_block->chars;
     return c;
@@ -1179,12 +1190,12 @@ unsigned char next_input_block()
 //
 //	These macros are used by the parse routines
 //
-#define BLOCK_SIZE NX_TEXTPER			/* Match what Text seems to use */
+#define BLOCK_SIZE NSTextBlockSize			/* Match what Text seems to use */
 
-static NXTextBlock 	*write_block;		/* Pointer to block being filled */
+static NSTextBlock 	*write_block;		/* Pointer to block being filled */
 static unsigned char 	*write_pointer;	/* Pointer to next characetr to be written */
 static unsigned char	*write_limit;	/* Pointer to the end of the allocated area*/
-static NXRun *		lastRun;	/* Pointer to the run being appended to */
+static NSRun *		lastRun;	/* Pointer to the run being appended to */
 static int		original_length; /* of text */
 
 #define OUTPUT(c)	{ *write_pointer++ = (c); \
@@ -1207,13 +1218,13 @@ static int		original_length; /* of text */
 //
 void append_start_block()
 {	
-    NXTextBlock *previous_block=write_block;	/* to previous write block */
+    NSTextBlock *previous_block=write_block;	/* to previous write block */
     
     if (TRACE)printf("    Starting to append new block.\n");
         
-    lastRun = ((NXRun*) ((char*)HT->theRuns->runs +
-    				HT->theRuns->chunk.used))-1;
-    write_block = (NXTextBlock*)malloc(sizeof(*write_block));
+    lastRun = ((NSRun*) ((char*)HT->cStringTextInternalState->theRuns->runs +
+    				HT->cStringTextInternalState->theRuns->chunk.used))-1;
+    write_block = (NSTextBlock*)malloc(sizeof(*write_block));
     write_block->tbFlags.malloced=0;		/* See comment above */
     write_block->text = (unsigned char *)malloc(BLOCK_SIZE);
     write_block->chars = 0;			// For completeness: not used.
@@ -1225,7 +1236,7 @@ void append_start_block()
     write_block->prior = previous_block;
     write_block->next = previous_block->next;
     if (write_block->next) write_block->next->prior = write_block;
-        else HT->lastTextBlock = write_block;
+        else HT->cStringTextInternalState->lastTextBlock = write_block;
     previous_block->next = write_block;
      
 
@@ -1237,17 +1248,17 @@ void append_begin()
 {
     if (TRACE)printf("Begin append to text.\n");
     
-    [HT setText:""];				// Delete everything there
-    original_length = HT->textLength; 
+    [HT setString:@""];				// Delete everything there
+    original_length = HT->cStringTextInternalState->textLength; 
     if (TRACE) printf("Text now contains %i characters\n", original_length);
 
         
-    lastRun = ((NXRun*) ((char*)HT->theRuns->runs +
-    			HT->theRuns->chunk.used))-1;
+    lastRun = ((NSRun*) ((char*)HT->cStringTextInternalState->theRuns->runs +
+    			HT->cStringTextInternalState->theRuns->chunk.used))-1;
 
 //	Use the last existing text block:
 
-    write_block = HT->lastTextBlock;
+    write_block = HT->cStringTextInternalState->lastTextBlock;
     
 //	It seems that the Text object doesn't like to be empty: it always wants to
 //	have a newline in at leats. However, we need it seriously empty and so we
@@ -1257,7 +1268,7 @@ void append_begin()
         if (TRACE) printf("HT: Clearing out single character from Text.\n");
         lastRun->chars =  0;		/* Empty the run */
 	write_block->chars = 0;		/* Empty the text block */
-	HT->textLength = 0;		/* Empty the whole Text object */
+	HT->cStringTextInternalState->textLength = 0;		/* Empty the whole Text object */
 	original_length = 0;		/* Note we have cleared it */
     }
 
@@ -1281,17 +1292,17 @@ void set_style(HTStyle *style)
 	lastRun->chars = lastRun->chars + size - write_block->chars;
 	write_block->chars = size;
         if (lastRun->chars) {
-	    int new_used = (((char *)(lastRun+2)) - (char*)HT->theRuns->runs);
-	    if (new_used > HT->theRuns->chunk.allocated) {
+	    int new_used = (((char *)(lastRun+2)) - (char*)HT->cStringTextInternalState->theRuns->runs);
+	    if (new_used > HT->cStringTextInternalState->theRuns->chunk.allocated) {
 	    	if (TRACE) printf("    HT: Extending runs.\n"); 
-		HT->theRuns = (NXRunArray*)NXChunkGrow(
-			&HT->theRuns->chunk, new_used);
-		lastRun = ((NXRun*) ((char*)HT->theRuns->runs +
-					 HT->theRuns->chunk.used))-1;
+		HT->cStringTextInternalState->theRuns = (NSRunArray*)NSChunkGrow(
+			&HT->cStringTextInternalState->theRuns->chunk, new_used);
+		lastRun = ((NSRun*) ((char*)HT->cStringTextInternalState->theRuns->runs +
+					 HT->cStringTextInternalState->theRuns->chunk.used))-1;
 	    }
 	    lastRun[1]=lastRun[0];
 	    lastRun++;
-	    HT->theRuns->chunk.used = new_used; 
+	    HT->cStringTextInternalState->theRuns->chunk.used = new_used; 
 	}
 	apply(style, lastRun);
 	lastRun->chars = 0;		/* For now */
@@ -1309,7 +1320,7 @@ void end_output()
     	size, write_block->text);
     lastRun->chars = lastRun->chars + size - write_block->chars;
     write_block->chars = size;
-    HT->textLength = HT->textLength + size;
+    HT->cStringTextInternalState->textLength = HT->cStringTextInternalState->textLength + size;
 
 }
 
@@ -1321,7 +1332,7 @@ void finish_output()
 {
     int size = write_pointer - write_block->text;
     if (size==0) {
-        HT->lastTextBlock = write_block->prior;	/* Remove empty text block */
+        HT->cStringTextInternalState->lastTextBlock = write_block->prior;	/* Remove empty text block */
 	write_block->prior->next = 0;
 	free(write_block->text);
 	free(write_block);
@@ -1332,13 +1343,13 @@ void finish_output()
 // get rid of zero length run if any
 
     if (lastRun->chars==0) {		/* Chop off last run */
-        HT->theRuns->chunk.used= (char*)lastRun - (char*)HT->theRuns;
+        HT->cStringTextInternalState->theRuns->chunk.used= (char*)lastRun - (char*)HT->cStringTextInternalState->theRuns;
     }
     
 //	calcLine requires that the last character be a newline!
     {
-        unsigned char * p = HT->lastTextBlock->text +
-			    HT->lastTextBlock->chars - 1;
+        unsigned char * p = HT->cStringTextInternalState->lastTextBlock->text +
+			    HT->cStringTextInternalState->lastTextBlock->chars - 1;
 	if (*p != '\n') {
 	    if (TRACE)
 	    printf(
@@ -1356,10 +1367,11 @@ void finish_output()
 
 void loadPlainText()
 {
-    [HT setMonoFont:YES];
-    [HT setHorizResizable:YES];
+    [HT setRichText:NO];
+    [HT setHorizontallyResizable:YES];
     [HT setNoWrap];
-    [HT readText:sgmlStream];	/* will read to end */
+#error TextConversion: 'setString:' used to be 'readText' takes an NSString instance (used to take NXStream) ; sgmlStream must be converted to NSString
+    [HT setString:sgmlStream];	/* will read to end */
     [HT adjustWindow];		/* Fix scrollers */
 }
 
@@ -1399,7 +1411,7 @@ void loadPlainText()
 {
     HTStyle * style = HTStyleNew();
     char * parsed_address;
-    Anchor * a =  *name ? [Anchor newParent:nodeAnchor tag:name]
+    Anchor * a =  *name ? [Anchor newParent:nodeAnchor [self cStringTextInternalState]->tag:name]
     			: [self anchor];
 
     style->anchor = a;
@@ -1444,11 +1456,10 @@ void loadPlainText()
 // The first click will have set the selection point.  On the second click,
 // we follow a link if possible, otherwise we allow Text to select a word as usual.
 //
-- mouseDown:(NXEvent*)theEvent
+- (void)mouseDown:(NSEvent *)theEvent 
 {
-    if (theEvent->data.mouse.click != 2) return [super mouseDown:theEvent];
-    if (![self followLink]) return [super mouseDown:theEvent];
-    return self;
+    if ([theEvent clickCount] != 2) {[super mouseDown:theEvent]; return;}
+    if (![self followLink]) {[super mouseDown:theEvent]; return;}
 }
 
 
@@ -1463,30 +1474,30 @@ void loadPlainText()
 //	We have to use a "dummy" flag to mean "This has an anchor: be careful!"
 //	This is horrible.
 
-- keyDown:(NXEvent*)theEvent
-#ifdef TRY1
+- keyDown:(NSEvent *)theEvent #ifdef TRY1
 {
     id result;
-    NXTextStyle *typingPara = typingRun.paraStyle;
-    int originalLength = textLength;
-    int originalStart = sp0.cp;
-    int originalEnd = spN.cp;
-    result = [super keyDown:theEvent];
+    NSTextStyle *typingPara = [self cStringTextInternalState]->typingRun.paraStyle;
+    int originalLength = [self cStringTextInternalState]->textLength;
+    int originalStart = [self cStringTextInternalState]->sp0.cp;
+    int originalEnd = [self cStringTextInternalState]->spN.cp;
+    [super keyDown:theEvent];
+    result = self;
     
     {
 	int inserted = originalEnd-originalStart +
-			textLength-originalLength;
+			[self cStringTextInternalState]->textLength-originalLength;
 	
 	if (TRACE) printf(
     "KeyDown, size(sel) %i (%i-%i)before, %i (%i-%i)after.\n",
 	    originalLength, originalStart, originalEnd,
-	    textLength, sp0.cp, spN.cp);
+	    [self cStringTextInternalState]->textLength, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
 	    
 	if (inserted>0) {
-	    NXRun * s;
+	    NSRun * s;
 	    int pos;
-	    int start = sp0.cp-inserted;
-	    for (pos=0, s=theRuns->runs; pos+s->chars<=start;
+	    int start = [self cStringTextInternalState]->sp0.cp-inserted;
+	    for (pos=0, s=[self cStringTextInternalState]->theRuns->runs; pos+s->chars<=start;
 		    pos = pos+((s++)->chars)) /*loop*/;
 
 //	s points to run containing first char of insertion
@@ -1496,7 +1507,7 @@ void loadPlainText()
 	    "HT: Strange: inserted %i at %i, start of run=%i !!\n",
 				    inserted, start, pos);
 				    
-	    if (s > theRuns->runs) {	/* ie s-1 is valid */
+	    if (s > [self cStringTextInternalState]->theRuns->runs) {	/* ie s-1 is valid */
 		s->paraStyle = typingPara;	/* Repair damage to runs */
 		/* What about freeing the old paragraph style? @@ */
 		s->info = (s-1)->info;
@@ -1512,73 +1523,74 @@ void loadPlainText()
 //	format which would be appropriate if typing were to occur.
 //	We have to use our own.
 {
-    NXRun run;
+    NSRun run;
     {
-	NXRun * s;	/* To point to run BEFORE selection */
+	NSRun * s;	/* To point to run BEFORE selection */
 	int pos;
 
 /* 	If there is a nonzero selection, take the run containing the
 **	first character. If the selection is empty, take the run containing the
 **	character before the selection.
 */
-	if (sp0.cp == spN.cp) {
-	    for (pos=0, s=theRuns->runs; pos+s->chars<sp0.cp;	/* Before */
+	if ([self cStringTextInternalState]->sp0.cp == [self cStringTextInternalState]->spN.cp) {
+	    for (pos=0, s=[self cStringTextInternalState]->theRuns->runs; pos+s->chars<[self cStringTextInternalState]->sp0.cp;	/* Before */
 		pos = pos+((s++)->chars)) /*loop*/;
 	} else {
-	    for (pos=0, s=theRuns->runs; pos+s->chars<=sp0.cp;	/* First ch */
+	    for (pos=0, s=[self cStringTextInternalState]->theRuns->runs; pos+s->chars<=[self cStringTextInternalState]->sp0.cp;	/* First ch */
 		pos = pos+((s++)->chars)) /*loop*/;
 	}
 
 /*	Check our understanding */
 
-	if (typingRun.paraStyle != 0) {
-	    if  (typingRun.paraStyle != s->paraStyle)
+	if ([self cStringTextInternalState]->typingRun.paraStyle != 0) {
+	    if  ([self cStringTextInternalState]->typingRun.paraStyle != s->paraStyle)
 	        printf("WWW: Strange: Typing run has bad style.\n");
 	    if ((s->info != 0)
-	        && (typingRun.info != s->info))
+	        && ([self cStringTextInternalState]->typingRun.info != s->info))
 	        printf(
 		"WWW: Strange: Typing run has bad anchor info.\n");
 	}
 	
-	typingRun = *s;		/* Copy run to be used for insertion */
+	[self cStringTextInternalState]->typingRun = *s;		/* Copy run to be used for insertion */
 	run = *s;		/* save a copy */
     }
     
-    if (!run.rFlags.dummy) return [super keyDown:theEvent]; // OK!
+    if (!run.rFlags.dummy) {[super keyDown:theEvent]; return self;} // OK!
 
     {
 	id result;
-	int originalLength = textLength;
-	int originalStart = sp0.cp;
-	int originalEnd = spN.cp;
-	result = [super keyDown:theEvent];
+	int originalLength = [self cStringTextInternalState]->textLength;
+	int originalStart = [self cStringTextInternalState]->sp0.cp;
+	int originalEnd = [self cStringTextInternalState]->spN.cp;
+	[super keyDown:theEvent];
+	result = self;
 	
 /* 	Does it really change? YES!
 */    
 	if (TRACE) {
-	    if (typingRun.info != run.info) printf(
+	    if ([self cStringTextInternalState]->typingRun.info != run.info) printf(
 		"Typing run info was %p, now %p !!\n",
-		run.info, typingRun.info);
-	    if (typingRun.paraStyle != run.paraStyle) printf(
+		run.info, [self cStringTextInternalState]->typingRun.info);
+	    if ([self cStringTextInternalState]->typingRun.paraStyle != run.paraStyle) printf(
 		"Typing run paraStyle was %p, now %p !!\n",
-		run.paraStyle, typingRun.paraStyle);
+		run.paraStyle, [self cStringTextInternalState]->typingRun.paraStyle);
 	}
 /*	Patch the new run if necessary:
 */
 	{
 	    int inserted = originalEnd-originalStart +
-	    		 textLength-originalLength;
+	    		 [self cStringTextInternalState]->textLength-originalLength;
 	    
 	    if (TRACE) printf(
 	"KeyDown, size(sel) %i (%i-%i)before, %i (%i-%i)after.\n",
 		originalLength, originalStart, originalEnd,
-		textLength, sp0.cp, spN.cp);
+		[self cStringTextInternalState]->textLength, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
 
 	    if (inserted>0) {
-	    	NXRun * s;
+	    	NSRun * s;
 		int pos;
-		int start = sp0.cp-inserted;
-    		for (pos=0, s=theRuns->runs; pos+s->chars<=start;
+		int start = [self cStringTextInternalState]->sp0.cp-inserted;
+    		for (pos=0, s=[self cStringTextInternalState]->theRuns->runs; pos+s->chars<=start;
     			pos = pos+((s++)->chars)) /*loop*/;
 
 //	s points to run containing first char of insertion
@@ -1605,41 +1617,43 @@ void loadPlainText()
 //	After paste, determine paragraph styles for pasted material:
 //	------------------------------------------------------------
 
-- paste:sender;
+- (void)paste:(id)sender;
 {
     id result;
-    int originalLength = textLength;
-    int originalStart = sp0.cp;
-    int originalEnd = spN.cp;
+    int originalLength = [self cStringTextInternalState]->textLength;
+    int originalStart = [self cStringTextInternalState]->sp0.cp;
+    int originalEnd = [self cStringTextInternalState]->spN.cp;
     Anchor * typingInfo;
     
-    result = [super paste:sender];		// Do the paste
+    [super paste:sender];
+    
+    result = self;		// Do the paste
         
     {
 	int inserted = originalEnd-originalStart +
-			textLength-originalLength;
+			[self cStringTextInternalState]->textLength-originalLength;
 	
 	if (TRACE) printf(
     "Paste, size(sel) %i (%i-%i)before, %i (%i-%i)after.\n",
 	    originalLength, originalStart, originalEnd,
-	    textLength, sp0.cp, spN.cp);
+	    [self cStringTextInternalState]->textLength, [self cStringTextInternalState]->sp0.cp, [self cStringTextInternalState]->spN.cp);
 	    
 	if (inserted>0) {
-	    NXRun *s, *r;
+	    NSRun *s, *r;
 	    int pos;
-	    int start = sp0.cp-inserted;
-	    for (pos=0, s=theRuns->runs; pos+s->chars<=start;
+	    int start = [self cStringTextInternalState]->sp0.cp-inserted;
+	    for (pos=0, s=[self cStringTextInternalState]->theRuns->runs; pos+s->chars<=start;
 		    pos = pos+((s++)->chars)) /*loop*/;
 //		s points to run containing first char of insertion
 
-	    if (pos!=sp0.cp-inserted)
+	    if (pos!=[self cStringTextInternalState]->sp0.cp-inserted)
 		    printf("HT paste: Strange: insert@%i != run@%i !!\n",
 				    start, pos);
 				    
-	    if (s > theRuns->runs) typingInfo = (s-1)->info;
+	    if (s > [self cStringTextInternalState]->theRuns->runs) typingInfo = (s-1)->info;
 	    else typingInfo = 0;
 	    
-	    for (r=s; pos+r->chars<sp0.cp; pos=pos+(r++)->chars) {
+	    for (r=s; pos+r->chars<[self cStringTextInternalState]->sp0.cp; pos=pos+(r++)->chars) {
 	        r->paraStyle = HTStyleForRun(styleSheet, r)->paragraph;
 		r->info = typingInfo;
 	    }

@@ -17,7 +17,7 @@
 
 #import "WWWPageLayout.h"
 
-#define THIS_TEXT  (HyperText *)[[[NXApp mainWindow] contentView] docView]
+#define THIS_TEXT  (HyperText *)[[[NSApp mainWindow] contentView] documentView]
 
 extern char * WWW_nameOfFile(const char * name);	/* In file access */
 
@@ -44,9 +44,9 @@ PRIVATE FileAccess * fileAccess = nil;
 - manager {return nil; }		// we have no manager
 - setManager {return nil; }		// we have no manager
 
-- (const char *) name
+- (NSString *)name
 {
-    return "any";
+    return @"any";
 }
 
 //			Access Management functions
@@ -55,8 +55,8 @@ PRIVATE FileAccess * fileAccess = nil;
 {
     if (!accesses) accesses=[List new];
     if (TRACE) printf(
-    	"HyperManager: Registering access `%s'.\n", [access name]);
-    if (0==strcmp([access name], "file"))
+    	"HyperManager: Registering access `%s'.\n", [[access name] cString]);
+    if (0==[[access name] compare:@"file"])
         fileAccess = (FileAccess*)access;		/* We need that one */
     return [accesses addObject:access];
 }
@@ -98,11 +98,11 @@ PRIVATE FileAccess * fileAccess = nil;
     s= HTParse(addr, "", PARSE_ACCESS);
     for(i=0; i<[accesses count]; i++) {
         access = [accesses objectAt:i];
-	if (0==strcmp(s, [access name])) {
+	if (0==[[NSString stringWithCString:s] compare:[access name]]) {
 	    id status;
 	    HyperText * HT;
 	    if(TRACE) printf("AccessMgr: Loading `%s' using `%s' access.\n",
-	    	[anAnchor address], [access name]);
+	    	[anAnchor address], [[access name] cString]);
 	    free(s);
 	    status =  [access loadAnchor:anAnchor Diagnostic:diagnostic];
 	    if (!status) return nil;
@@ -134,12 +134,10 @@ PRIVATE FileAccess * fileAccess = nil;
 	: "No access prefix specified for `%s'\n    Accesses are: %s .\n";
 
 	for(i=0; i<[accesses count]; i++) {
-	    sprintf(got, "%s: ",[[accesses objectAt:i] name]);
+	    sprintf(got, "%s: ",[[[accesses objectAt:i] name] cString]);
 	}
 	printf(format,[anAnchor address], got, s);
-	NXRunAlertPanel(NULL,format,
-	    	NULL,NULL,NULL,
-		[anAnchor address], got, s);
+	NSRunAlertPanel(@"", [NSString stringWithCString:format], @"", nil, nil, [anAnchor address], got, s);
     }
     free(s);
     return nil;
@@ -174,7 +172,7 @@ PRIVATE FileAccess * fileAccess = nil;
     strcpy(addr, [[HT nodeAnchor] address]);
     if ((p=strchr(addr, '?'))!=0) *p=0;		/* Chop off existing search string */   
     strcat(addr,"?");
-    strcpy(keys, [keywords stringValueAt:0]);
+    strcpy(keys, [[[keywords cellAtIndex:0] stringValue] cString]);
     q =HTStrip(keys);			/* Strip leading and trailing */
     for(p=q; *p; p++)
         if (WHITE(*p)) {
@@ -238,8 +236,10 @@ PRIVATE FileAccess * fileAccess = nil;
 //	On Initialisation, Load Initial File
 //	------------------------------------
 
--appDidInit:sender
+#warning NotificationConversion: applicationDidFinishLaunching:(NSNotification *)notification (used to be appDidInit:) is an NSApplication notification method (used to be a delegate method); delegates of NSApplication are automatically set to observe this notification; subclasses of NSApplication do not automatically receive this notification
+- (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
+    NSApplication *theApplication = [notification object];
     if (TRACE) printf("HyperManager: appDidInit\n");
     
 //    StrAllocCopy(appDirectory, NXArgv[0]);
@@ -252,6 +252,7 @@ PRIVATE FileAccess * fileAccess = nil;
 
 //	Accept that we can open files from the workspace
 
+#error Application Conversion: 'appAcceptsAnotherFile:' is obsolete
 - (BOOL)appAcceptsAnotherFile:sender
 {
     return YES;
@@ -303,23 +304,23 @@ PRIVATE FileAccess * fileAccess = nil;
 
 - open:sender
 {
-    return [self accessName:[openString stringValueAt:0] Diagnostic:0];
+    return [self accessName:[[[openString cellAtIndex:0] stringValue] cString] Diagnostic:0];
 }
 
 - linkToString:sender
 {
     return [THIS_TEXT linkSelTo:
-        [Anchor newAddress:[openString stringValueAt:0]]];
+        [Anchor newAddress:[[[openString cellAtIndex:0] stringValue] cString]]];
 }
 
 - openRTF:sender
 {
- return [self accessName:[openString stringValueAt:0] Diagnostic:1];
+ return [self accessName:[[[openString cellAtIndex:0] stringValue] cString] Diagnostic:1];
 }
 
 - openSGML:sender
 {
- return [self accessName:[openString stringValueAt:0] Diagnostic:2];
+ return [self accessName:[[[openString cellAtIndex:0] stringValue] cString] Diagnostic:2];
 }
 
 
@@ -329,7 +330,7 @@ PRIVATE FileAccess * fileAccess = nil;
 {
     HyperText * HT = THIS_TEXT;
     id status = [(HyperAccess *)[HT server] saveNode:HT];
-    if (status) [[HT window] setDocEdited:NO];
+    if (status) [[HT window] setDocumentEdited:NO];
     return status;
 }
 
@@ -338,19 +339,19 @@ PRIVATE FileAccess * fileAccess = nil;
 
 - saveAll:sender
 {
-    List * windows = [NXApp windowList];
+    NSArray *windows = [NSApp windows];
     id cv;
     int i;
     int n = [windows count];
     
     for(i=0; i<n ; i++){
-	Window * w = [windows objectAt:i];
+	NSWindow * w = [windows objectAtIndex:i];
 	if (cv=[w contentView])
-	 if ([cv respondsTo:@selector(docView)])
-	 if ([w isDocEdited]) {
-		HyperText * HT = [[w contentView] docView];
+	 if ([cv respondsToSelector:@selector(documentView)])
+	 if ([w isDocumentEdited]) {
+		HyperText * HT = [[w contentView] documentView];
 		if ([(HyperAccess *)[HT server] saveNode:HT])
-			[w setDocEdited: NO];
+			[w setDocumentEdited:NO];
 	}
     }
 
@@ -364,25 +365,25 @@ PRIVATE FileAccess * fileAccess = nil;
 
 - closeOthers:sender
 {
-    Window * thisWindow = [NXApp mainWindow];
-    List * windows = [[NXApp windowList] copy];
+    NSWindow * thisWindow = [NSApp mainWindow];
+    List * windows = [[NSApp windows] copy];
 
     {
         int i;
 	id cv;					// Content view
 	int n = [windows count];
         for(i=0; i<n; i++){
-	    Window * w = [windows objectAt:i];
+	    NSWindow * w = [windows objectAt:i];
 	    if (w != thisWindow)
 	    if (cv=[w contentView])
-	    if ([cv respondsTo:@selector(docView)]) {
-	    	if (![w isDocEdited]) {
+	    if ([cv respondsToSelector:@selector(documentView)]) {
+	    	if (![w isDocumentEdited]) {
 		    if (TRACE) printf(" Closing window %p\n", w);
 		    [w performClose:self];
 	        }
 	    }
 	}
-	[windows free];				/* Free off copy of list */
+	[windows release];				/* Free off copy of list */
 	return self;
     }
 }
@@ -390,16 +391,18 @@ PRIVATE FileAccess * fileAccess = nil;
 //	Print Postscript code for the main window
 //	-----------------------------------------
 
-- print:sender
+#warning PrintingConversion:  printPSCode: has been renamed to print:.  Rename this method?
+- (void)print:(id)sender
 {
-     return [THIS_TEXT printPSCode:sender];
+     [THIS_TEXT print:sender];
+     return THIS_TEXT;
 }
 
 //	Run the page layout panel
 //
 - runPagelayout:sender
 {
-    PageLayout * pl = [WWWPageLayout new];
+    NSPageLayout * pl = [WWWPageLayout pageLayout];
     [pl runModal];
     return self;
 }
@@ -407,12 +410,11 @@ PRIVATE FileAccess * fileAccess = nil;
 //	Set the title of the main window
 //	--------------------------------
 
-- setTitle: sender
+- (void)setTitle:(id)sender
 {
-    Window * thisWindow = [NXApp mainWindow];
-    [thisWindow setTitle:[titleString stringValueAt:0]];
-    [thisWindow setDocEdited:YES];
-    return self;
+    NSWindow * thisWindow = [NSApp mainWindow];
+    [thisWindow setTitle:[[titleString cellAtIndex:0] stringValue]];
+    [thisWindow setDocumentEdited:YES];
 }
 
 //	Inspect Link
@@ -423,23 +425,22 @@ PRIVATE FileAccess * fileAccess = nil;
     Anchor * source = [THIS_TEXT selectedLink];
     Anchor * destination;
     if (!source){
-    	[openString setStringValue: "(No anchor selected in main document.)"
-                at:0];
+    	[[openString cellAtIndex:0] setStringValue:@"(No anchor selected in main document.)"];
          return nil;
     }
     {
     	char * source_address = [source fullAddress];
-    	[addressString setStringValue: source_address];
+    	[addressString setStringValue:[NSString stringWithCString:source_address]];
 	free(source_address);
     }
 
     destination = [source destination];
     if (destination) {
     	char * destination_address = [destination fullAddress];
-    	[openString setStringValue: destination_address at:0];
+    	[[openString cellAtIndex:0] setStringValue:[NSString stringWithCString:destination_address]];
 	free(destination_address);
     } else {
-	[openString setStringValue: "Anchor not linked."  at:0];
+	[[openString cellAtIndex:0] setStringValue:@"Anchor not linked."];
     }
 
     return self;
@@ -449,7 +450,7 @@ PRIVATE FileAccess * fileAccess = nil;
 //	------------------------
 - copyAddress:sender
 {
-    [openString setStringValue: [[THIS_TEXT nodeAnchor] address] at:0];
+    [[openString cellAtIndex:0] setStringValue:[NSString stringWithCString:[[THIS_TEXT nodeAnchor] address]]];
     return self;
 }
 
@@ -475,8 +476,8 @@ PRIVATE FileAccess * fileAccess = nil;
         [[keywords window] close];
 //        [[keywords window] orderOut:self];	bug?
     }
-    [titleString setStringValue: [[sender window] title] at:0];
-    [addressString setStringValue: [[sender nodeAnchor] address]];
+    [[titleString cellAtIndex:0] setStringValue:[[sender window] title]];
+    [addressString setStringValue:[NSString stringWithCString:[[sender nodeAnchor] address]]];
 //  [openString setStringValue: [[sender nodeAnchor] address] at:0];
     return self;
 }
@@ -487,13 +488,13 @@ PRIVATE FileAccess * fileAccess = nil;
 //	are the open and search panels. When they become key,
 //	we ensure that the text is selected.
 
-- windowDidBecomeKey:sender
+#warning NotificationConversion: windowDidBecomeKey:(NSNotification *)notification is an NSWindow notification method (used to be a delegate method); delegates of NSWindow are automatically set to observe this notification; subclasses of NSWindow do not automatically receive this notification
+- (void)windowDidBecomeKey:(NSNotification *)notification
 {
-    if (sender == [openString window])
-        [openString selectTextAt:0];	// Preselect the text
-    else if (sender == [keywords window])
-        [keywords selectTextAt:0];	// Preselect the text
-
-    return self;
+    NSWindow *theWindow = [notification object];
+    if (theWindow == [openString window])
+        [openString selectTextAtIndex:0];	// Preselect the text
+    else if (theWindow == [keywords window])
+        [keywords selectTextAtIndex:0];
 }
 @end

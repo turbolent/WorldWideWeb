@@ -8,7 +8,7 @@
 #define takeBackup YES		// Take backup when saving existing file Cmd/S
 
 #import "FileAccess.h"
-#import <appkit/appkit.h>
+#import <AppKit/AppKit.h>
 #import <stdio.h>
 #import <sys/types.h>
 #import <sys/stat.h>		// For fstat()
@@ -21,7 +21,7 @@
 #import "HTFile.h"		// File access routines
 
 
-#define THIS_TEXT  (HyperText *)[[[NXApp mainWindow] contentView] docView]
+#define THIS_TEXT  (HyperText *)[[[NSApp mainWindow] contentView] documentView]
 
 @implementation FileAccess : HyperAccess
 
@@ -31,17 +31,18 @@ extern char * appDirectory;		/* Pointer to directory for application */
 
 //	Initialize this class
 //
-+ initialize
++ (void)initialize
 {
-    return [super initialize];
+    [super initialize];
+    return;
 }
 
 
 //	Overlay method returning the name of the access.
 
-- (const char *)name
+- (NSString *)name
 {
-    return "file";
+    return @"file";
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +65,8 @@ extern char * appDirectory;		/* Pointer to directory for application */
         [HT writeSGML:s relativeTo:saveName];
         free(saveName);
     }
-    else if (format==WWW_RICHTEXT) [HT writeRichText:s];
+#error TextConversion: RTFFromRange: (used to be writeRichText:s) returns an NSData instance (used to write contents to <steeam>). s must be converted to NSData
+    else if (format==WWW_RICHTEXT) s = [HT RTFFromRange:NSMakeRange(0, [[HT text] length])];
     else if (format==WWW_PLAINTEXT || format==WWW_SOURCE) [HT writeText:s];
     else fprintf(stderr, "HT/File: Unknown format!\n"); 
     
@@ -93,27 +95,28 @@ const char * ask_name(HyperText * hint, int format)
     char * 		suggestion;
     char * 		slash;
     int			status;
-    static SavePanel * 	save_panel;		/* Keep a Save panel alive  */
+    static NSSavePanel * 	save_panel;		/* Keep a Save panel alive  */
     
     if (!hint) return 0;
     if (!save_panel) {
-        save_panel = [SavePanel new];	//	Keep between invocations
+#warning FactoryMethods: [SavePanel savePanel] used to be [SavePanel new].  Save panels are no longer shared.  'savePanel' returns a new, autoreleased save panel in the default configuration.  To maintain state, retain and reuse one save panel (or manually re-set the state each time.)
+        save_panel = [NSSavePanel savePanel];	//	Keep between invocations
     }
     
-    if (format==WWW_HTML) [save_panel setRequiredFileType: "html"];
-    else if (format==WWW_RICHTEXT) [save_panel setRequiredFileType: "rtf"];
-    else if (format==WWW_PLAINTEXT) [save_panel setRequiredFileType: "txt"];
-    else if (format==WWW_POSTSCRIPT) [save_panel setRequiredFileType: "ps"];
-    else [save_panel setRequiredFileType: ""];
+    if (format==WWW_HTML) [save_panel setRequiredFileType:@"html"];
+    else if (format==WWW_RICHTEXT) [save_panel setRequiredFileType:@"rtf"];
+    else if (format==WWW_PLAINTEXT) [save_panel setRequiredFileType:@"txt"];
+    else if (format==WWW_POSTSCRIPT) [save_panel setRequiredFileType:@"ps"];
+    else [save_panel setRequiredFileType:@""];
     
     suggestion = HTLocalName([[hint nodeAnchor]address]);
     slash = strrchr(suggestion, '/');	//	Point to last slash
     if (slash) {
     	*slash++ = 0;			/* Separate directory and filename */
-	status = [save_panel runModalForDirectory:suggestion file:slash];
+	status = [save_panel runModalForDirectory:@"" file:@""];
     } else {
         if (TRACE) printf ("No slash in directory!!\n");
-	status = [save_panel runModalForDirectory:"." file:suggestion];
+	status = [save_panel runModalForDirectory:@"" file:@""];
     }
     free(suggestion);
     
@@ -121,7 +124,7 @@ const char * ask_name(HyperText * hint, int format)
     	if (TRACE) printf("Save cancelled.\n");
 	return 0;
     }
-    return [save_panel filename];
+    return [[save_panel filename] cString];
 }
 
 
@@ -192,7 +195,7 @@ const char * ask_name(HyperText * hint, int format)
 	char * p = backup_filename;
 	backup_filename = malloc(strlen(filename)+2);
 	strcpy(backup_filename, filename);
-	for(p=backup_filename+strlen(backup_filename);; p--) {// Start at null
+	for(p=backup_filename+strlen(backup_filename); ; p--) {// Start at null
 	    if ((*p=='/') || (p<backup_filename)) {
 	        p[1]=',';		/* Insert comma after slash */
 		break;
@@ -220,7 +223,7 @@ const char * ask_name(HyperText * hint, int format)
     
 
     status = [self save:HT inFile:filename format:[HT format]];
-    if (status) [[HT window] setDocEdited: NO];
+    if (status) [[HT window] setDocumentEdited:NO];
     free(filename);
     return status;
 }
@@ -273,9 +276,7 @@ const char * ask_name(HyperText * hint, int format)
 	if (!s) {
 	    if (TRACE) printf("Could not open `%s' with FTP either.\n",
 		    newname);
-	    NXRunAlertPanel(NULL, "Could not open `%s'\n",
-	    	NULL,NULL,NULL,
-		newname   /*, strerror(errno) */ );
+	    NSRunAlertPanel(@"", @"Could not open `%s'\n", @"", nil, nil, newname);
 	    free(filename);
     	    free(newname);
 	    return nil;
@@ -298,17 +299,18 @@ const char * ask_name(HyperText * hint, int format)
 
 	    HT = [HyperText newAnchor:anAnchor Server:self];
 	    [HT setupWindow];			
-	    [[HT window]setTitle:filename];	 // Show something's happening
+	    [[HT window] setTitle:[NSString stringWithCString:filename]];	 // Show something's happening
 
 	    if (file_number<0)
 	        [HT setEditable:HTEditable(filename)]; // This is editable?
 	    else
-	        [HT setEditable: NO];			// AFTP data.
+	        [HT setEditable:NO];			// AFTP data.
 		
 	    switch(format) {
 	    case WWW_HTML:
 			if (diagnostic==2) {
-			    [HT readText:s];
+#error TextConversion: 'setString:' used to be 'readText' takes an NSString instance (used to take NXStream) ; s must be converted to NSString
+			    [HT setString:s];
 			    [HT setFormat: WWW_SOURCE]; 
 			} else  {  
 			    [HT readSGML:s diagnostic:diagnostic];
@@ -317,15 +319,18 @@ const char * ask_name(HyperText * hint, int format)
 			
 	    case WWW_RICHTEXT:   
 			if (diagnostic > 0) {
-			    [HT readText:s];
+#error TextConversion: 'setString:' used to be 'readText' takes an NSString instance (used to take NXStream) ; s must be converted to NSString
+			    [HT setString:s];
 			    [HT setFormat: WWW_SOURCE]; 
 			} else {   
-			    [HT readRichText:s];
+#error TextConversion: 'replaceCharactersInRange:withRTF...' (used to be readRichText:) takes an NSData instance as its second argument. s must be converted to NSData
+			    [HT replaceCharactersInRange:NSMakeRange(0, [[HT text] length]) withRTF:s];
 			}
 			break;
 			
 	    case WWW_PLAINTEXT:
-			[HT readText:s];
+#error TextConversion: 'setString:' used to be 'readText' takes an NSString instance (used to take NXStream) ; s must be converted to NSString
+			[HT setString:s];
     			break;
 	    }
 	}
@@ -377,14 +382,15 @@ const char * existing_filename()
     char * slash;
     int	status;
     char * typelist = 0;		//	Any extension.
-    static OpenPanel * openPanel=0;
+    static NSOpenPanel * openPanel=0;
 
 
 //	Get The Filename from the User
     
     if (!openPanel) {
-    	openPanel = [OpenPanel new];
-    	[openPanel allowMultipleFiles:NO];
+#warning FactoryMethods: [OpenPanel openPanel] used to be [OpenPanel new].  Open panels are no longer shared.  'openPanel' returns a new, autoreleased open panel in the default configuration.  To maintain state, retain and reuse one open panel (or manually re-set the state each time.)
+    	openPanel = [NSOpenPanel openPanel];
+    	[openPanel setAllowsMultipleSelection:NO];
     }
 
     HT = THIS_TEXT;			// Hypertext in main window, if selected.
@@ -393,18 +399,18 @@ const char * existing_filename()
 	slash = strrchr(suggestion, '/');	//	Point to last slash
 	if (slash) {
 	    *slash++ = 0;			/* Separate directory and filename */
-	    status = [openPanel runModalForDirectory:suggestion
-	    			file:""
-				types:&typelist];
+#error StringConversion: Open panel types are now stored in an NSArray of NSStrings (used to use char**).  Change your variable declaration.
+	    status = [openPanel runModalForDirectory:[NSString stringWithCString:suggestion] file:@"" types:&typelist];
 	    // (was: file:slash but this is silly as that is already open.)
 	} else {
             if (TRACE) printf ("No slash in directory!!\n");
-	    status = [openPanel runModalForDirectory:"."
-	    	file:"" types:&typelist];
+#error StringConversion: Open panel types are now stored in an NSArray of NSStrings (used to use char**).  Change your variable declaration.
+	    status = [openPanel runModalForDirectory:@"." file:@"" types:&typelist];
 	    // (was: file:suggestion but this is silly as above)
 	}
 	free(suggestion);
     } else {
+#error StringConversion: Open panel types are now stored in an NSArray of NSStrings (used to use char**).  Change your variable declaration.
         status = [openPanel runModalForTypes:&typelist];
     }
 
@@ -412,7 +418,7 @@ const char * existing_filename()
     	if (TRACE) printf("Open cancelled\n");
 	return NULL;
     }
-    return [openPanel filename];
+    return [[openPanel filename] cString];
 }
 
 
@@ -573,9 +579,9 @@ const char * existing_filename()
 	if (pDir) {
     	    char title[255];
 	    sprintf(title, "%s -- %s", pTitle, pDir);
-	    [HT setTitle:title];		/* Default title is filename */
+	    [HT setTitle:[NSString stringWithCString:title]];		/* Default title is filename */
 	} else {
-	    [HT setTitle:pTitle];    
+	    [HT setTitle:[NSString stringWithCString:pTitle]];    
 	}
     }
     

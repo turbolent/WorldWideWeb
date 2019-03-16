@@ -8,27 +8,27 @@
 #define ANCHOR_CURRENT_VERSION 0
 
 #import <ctype.h>
-#import <objc/Object.h>
+#import <Foundation/NSObject.h>
 #import <objc/typedstream.h>
-#import <appkit/appkit.h>
+#import <AppKit/AppKit.h>
 #import "Anchor.h"
 #import "HTUtils.h"
 #import "HTParse.h"
 #import "HyperText.h"
 #import "HyperManager.h"
 
-@implementation Anchor:Object
+@implementation Anchor:NSObject
 
 static HyperManager *manager;
 static List * orphans;		// Grand list of all anchors with no parents
 List * HTHistory;		// List of visited anchors
 
-+ initialize 
++ (void)initialize 
 {
     orphans = [List new];
     HTHistory = [List new];
     [Anchor setVersion:ANCHOR_CURRENT_VERSION];
-    return self;
+    return;
 }
 
 + setManager:aManager
@@ -169,7 +169,8 @@ PRIVATE BOOL equivalent(const char * s, const char *t)
 //
 //	We take the link After or before the one we took to get where we are
 //
-+moveBy:(int)offset
+#error ViewConversion: 'moveBy:' is obsolete ; use 'setFrameOrigin:'
++ moveBy:(int)offset
 {
     Anchor * up = [HTHistory lastObject];
     if (up)
@@ -188,6 +189,7 @@ PRIVATE BOOL equivalent(const char * s, const char *t)
 }
 
 +next		{ return [self moveBy:+1]; }
+#error ViewConversion: 'moveBy:' is obsolete ; use 'setFrameOrigin:'
 +previous	{ return [self moveBy:-1]; }
 
 
@@ -211,14 +213,14 @@ PRIVATE BOOL equivalent(const char * s, const char *t)
 //
 //		Free an anchor
 //		--------------
-- free
+- (void)dealloc
 {
     if (Address) free(Address);
     if (parent) [parent->children removeObject:self];
     if (TRACE) printf("Anchor: free called!  Not removed from Node!!!!!!!\n");
     [Sources makeObjectsPerform:@selector(unload)];
     if (!parent) [orphans removeObject:self];
-    return [super free];
+    { [super dealloc]; return; };
 }
 
 //	Get list of sources
@@ -255,7 +257,7 @@ PRIVATE BOOL equivalent(const char * s, const char *t)
 {
     if (DestAnchor) [self unlink];		    // Remove outgoing link
     [Sources makeObjectsPerform:@selector(unlink)]; // Remove incomming links
-    return [self free];
+    return [self release];
 }
 
 //	Set the region represented by the anchor
